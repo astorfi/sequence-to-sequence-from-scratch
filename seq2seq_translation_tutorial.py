@@ -89,11 +89,53 @@ import unicodedata
 import string
 import re
 import random
+import os
 
 import torch
 import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
+import argparse
+
+# Useful function for arguments.
+def str2bool(v):
+    return v.lower() in ("yes", "true")
+
+# Parser
+parser = argparse.ArgumentParser(description='Creating Classifier')
+
+######################
+# Optimization Flags #
+######################
+
+parser.add_argument('--lr', '--learning-rate', default=0.01, type=float, help='initial learning rate')
+parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
+parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
+parser.add_argument('--gamma', default=0.1, type=float, help='Gamma update for SGD')
+parser.add_argument('--epochs_per_lr_drop', default=450, type=float,
+                    help='number of epochs for which the learning rate drops')
+
+##################
+# Training Flags #
+##################
+parser.add_argument('--batch_size', default=128, type=int, help='Batch size for training')
+parser.add_argument('--num_workers', default=8, type=int, help='Number of workers used in dataloading')
+parser.add_argument('--num_epoch', default=600, type=int, help='Number of training iterations')
+parser.add_argument('--cuda', default=True, type=str2bool, help='Use cuda to train model')
+parser.add_argument('--save_folder', default=os.path.expanduser('~/weights'), help='Location to save checkpoint models')
+parser.add_argument('--epochs_per_save', default=10, type=int,
+                    help='number of epochs for which the model will be saved')
+parser.add_argument('--batch_per_log', default=10, type=int, help='Print the log at what number of batches?')
+
+###############
+# Model Flags #
+###############
+
+parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
+
+# Add all arguments to parser
+args = parser.parse_args()
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -213,6 +255,9 @@ def readLangs(lang1, lang2, reverse=False):
 
     # Split every line into pairs and normalize
     pairs = [[normalizeString(s) for s in l.split('\t')] for l in lines]
+
+    if args.auto_encoder:
+        pairs = [[pair[0],pair[1]] for pair in pairs]
 
     # Reverse pairs, make Lang instances
     if reverse:
@@ -340,16 +385,18 @@ class EncoderRNN(nn.Module):
         self.hidden_size = hidden_size
 
         self.embedding = nn.Embedding(input_size, hidden_size)
-        self.gru = nn.GRU(hidden_size, hidden_size)
+        # self.gru = nn.GRU(hidden_size, hidden_size)
+        self.lstm = nn.LSTM(hidden_size, hidden_size)
 
     def forward(self, input, hidden):
         embedded = self.embedding(input).view(1, 1, -1)
         rnn_input = embedded
-        output, hidden = self.gru(rnn_input, hidden)
+        output, hidden = self.lstm(rnn_input, hidden)
         return output, hidden
 
     def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size, device=device)
+        # return torch.zeros(1, 1, self.hidden_size, device=device)
+        return [torch.zeros(1, 1, self.hidden_size, device=device) , torch.zeros(1, 1, self.hidden_size, device=device)]
 
 ######################################################################
 # The Decoder
@@ -385,19 +432,20 @@ class DecoderRNN(nn.Module):
         self.hidden_size = hidden_size
 
         self.embedding = nn.Embedding(output_size, hidden_size)
-        self.gru = nn.GRU(hidden_size, hidden_size)
+        self.lstm = nn.LSTM(hidden_size, hidden_size)
         self.out = nn.Linear(hidden_size, output_size)
-        self.softmax = nn.LogSoftmax(dim=1)
+        # self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, input, hidden):
         output = self.embedding(input).view(1, 1, -1)
         output = F.relu(output)
-        output, hidden = self.gru(output, hidden)
-        output = self.softmax(self.out(output[0]))
+        output, hidden = self.lstm(output, hidden)
+        output = self.out(output[0])
+        # output = self.softmax(output)
         return output, hidden
 
     def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size, device=device)
+        return [torch.zeros(1, 1, self.hidden_size, device=device) , torch.zeros(1, 1, self.hidden_size, device=device)]
 
 ######################################################################
 # I encourage you to train and observe the results of this model, but to
@@ -639,7 +687,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
     training_pairs = [tensorsFromPair(random.choice(pairs))
                       for i in range(n_iters)]
-    criterion = nn.NLLLoss()
+    criterion = nn.CrossEntropyLoss()
 
     for iter in range(1, n_iters + 1):
         training_pair = training_pairs[iter - 1]
@@ -717,12 +765,12 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
         decoder_hidden = encoder_hidden
 
         decoded_words = []
-        decoder_attentions = torch.zeros(max_length, max_length)
+        # decoder_attentions = torch.zeros(max_length, max_length)
 
         for di in range(max_length):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
-            decoder_attentions[di] = decoder_attention.data
+            decoder_output, decoder_hidden = decoder(
+                decoder_input, decoder_hidden)
+            # decoder_attentions[di] = decoder_attention.data
             topv, topi = decoder_output.data.topk(1)
             if topi.item() == EOS_token:
                 decoded_words.append('<EOS>')
@@ -732,7 +780,8 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
 
             decoder_input = topi.squeeze().detach()
 
-        return decoded_words, decoder_attentions[:di + 1]
+        # return decoded_words, decoder_attentions[:di + 1]
+        return decoded_words
 
 
 ######################################################################
@@ -745,7 +794,7 @@ def evaluateRandomly(encoder, decoder, n=10):
         pair = random.choice(pairs)
         print('>', pair[0])
         print('=', pair[1])
-        output_words, attentions = evaluate(encoder, decoder, pair[0])
+        output_words = evaluate(encoder, decoder, pair[0])
         output_sentence = ' '.join(output_words)
         print('<', output_sentence)
         print('')
@@ -779,7 +828,7 @@ trainIters(encoder1, decoder1, 75000, print_every=5000)
 ######################################################################
 #
 
-evaluateRandomly(encoder1, attn_decoder1)
+evaluateRandomly(encoder1, decoder1)
 
 
 ######################################################################
@@ -796,50 +845,50 @@ evaluateRandomly(encoder1, attn_decoder1)
 # output steps:
 #
 
-output_words, attentions = evaluate(
-    encoder1, attn_decoder1, "je suis trop froid .")
-plt.matshow(attentions.numpy())
-
-
-######################################################################
-# For a better viewing experience we will do the extra work of adding axes
-# and labels:
+# output_words, attentions = evaluate(
+#     encoder1, attn_decoder1, "je suis trop froid .")
+# plt.matshow(attentions.numpy())
 #
-
-def showAttention(input_sentence, output_words, attentions):
-    # Set up figure with colorbar
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    cax = ax.matshow(attentions.numpy(), cmap='bone')
-    fig.colorbar(cax)
-
-    # Set up axes
-    ax.set_xticklabels([''] + input_sentence.split(' ') +
-                       ['<EOS>'], rotation=90)
-    ax.set_yticklabels([''] + output_words)
-
-    # Show label at every tick
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-
-    plt.show()
-
-
-def evaluateAndShowAttention(input_sentence):
-    output_words, attentions = evaluate(
-        encoder1, attn_decoder1, input_sentence)
-    print('input =', input_sentence)
-    print('output =', ' '.join(output_words))
-    showAttention(input_sentence, output_words, attentions)
-
-
-evaluateAndShowAttention("elle a cinq ans de moins que moi .")
-
-evaluateAndShowAttention("elle est trop petit .")
-
-evaluateAndShowAttention("je ne crains pas de mourir .")
-
-evaluateAndShowAttention("c est un jeune directeur plein de talent .")
+#
+# ######################################################################
+# # For a better viewing experience we will do the extra work of adding axes
+# # and labels:
+# #
+#
+# def showAttention(input_sentence, output_words, attentions):
+#     # Set up figure with colorbar
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111)
+#     cax = ax.matshow(attentions.numpy(), cmap='bone')
+#     fig.colorbar(cax)
+#
+#     # Set up axes
+#     ax.set_xticklabels([''] + input_sentence.split(' ') +
+#                        ['<EOS>'], rotation=90)
+#     ax.set_yticklabels([''] + output_words)
+#
+#     # Show label at every tick
+#     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+#     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+#
+#     plt.show()
+#
+#
+# def evaluateAndShowAttention(input_sentence):
+#     output_words, attentions = evaluate(
+#         encoder1, attn_decoder1, input_sentence)
+#     print('input =', input_sentence)
+#     print('output =', ' '.join(output_words))
+#     showAttention(input_sentence, output_words, attentions)
+#
+#
+# evaluateAndShowAttention("elle a cinq ans de moins que moi .")
+#
+# evaluateAndShowAttention("elle est trop petit .")
+#
+# evaluateAndShowAttention("je ne crains pas de mourir .")
+#
+# evaluateAndShowAttention("c est un jeune directeur plein de talent .")
 
 
 ######################################################################
