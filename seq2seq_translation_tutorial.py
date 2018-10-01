@@ -344,8 +344,8 @@ class EncoderRNN(nn.Module):
 
     def forward(self, input, hidden):
         embedded = self.embedding(input).view(1, 1, -1)
-        output = embedded
-        output, hidden = self.gru(output, hidden)
+        rnn_input = embedded
+        output, hidden = self.gru(rnn_input, hidden)
         return output, hidden
 
     def initHidden(self):
