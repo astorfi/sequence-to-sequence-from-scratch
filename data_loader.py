@@ -200,16 +200,26 @@ def tensorFromSentence(lang, sentence):
     indexes = indexesFromSentence(lang, sentence)
     indexes.append(EOS_token)
     # return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
-    return torch.tensor(indexes, dtype=torch.long).view(-1, 1)
+    return torch.tensor(indexes, dtype=torch.long).view(1, -1)
 
 
-def tensorsFromPair(pair, input_lang, output_lang):
+def tensorsFromPair(pair, input_lang, output_lang, max_input_length):
     input_tensor = tensorFromSentence(input_lang, pair[0])
     target_tensor = tensorFromSentence(output_lang, pair[1])
 
+    with torch.no_grad():
+
+        # Pad buttom with zeros for getting a fixed length.
+        pad_input = nn.ConstantPad1d((0, max_input_length - input_tensor.shape[1]),-1)
+        pad_target = nn.ConstantPad1d((0, max_input_length - target_tensor.shape[1]), -1)
+
+        # Padding operation
+        input_tensor_padded = pad_input(input_tensor)
+        target_tensor_padded = pad_target(target_tensor)
+
     # The "pad_sequence" function is used to pad the shorter sentence to make the tensors of equal size
     from torch.nn.utils.rnn import pad_sequence
-    pair_tensor = pad_sequence([input_tensor, target_tensor], batch_first=False, padding_value=-1)
+    pair_tensor = pad_sequence([input_tensor_padded, target_tensor_padded], batch_first=False, padding_value=-1)
 
     return pair_tensor
 
@@ -246,7 +256,7 @@ class Dataset():
             selected_pairs = pairs[int(0.8 * len(pairs)):]
 
         # Getting the tensors
-        selected_pairs_tensors = [tensorsFromPair(selected_pairs[i], input_lang, output_lang)
+        selected_pairs_tensors = [tensorsFromPair(selected_pairs[i], input_lang, output_lang, self.max_input_length)
                      for i in range(len(selected_pairs))]
 
         self.data = selected_pairs_tensors
@@ -273,16 +283,18 @@ class Dataset():
 # Uncomment for testing dataset class #
 #######################################
 
-# Create training data object
-trainset = Dataset(phase='train')
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=1,
-                                          shuffle=True, num_workers=1, pin_memory=False)
+# # Create training data object
+# trainset = Dataset(phase='train', max_input_length=10)
+# trainloader = torch.utils.data.DataLoader(trainset, batch_size=32,
+#                                           shuffle=True, num_workers=1, pin_memory=False)
+#
+# dataiter = iter(trainloader)
+# item = dataiter.next()
+# print(item['sentence'].shape)
 
-dataiter = iter(trainloader)
-item = dataiter.next()
-print(dataiter.next())
-sentences = item['sentence']
-print("Shape of a sample mini-batch: ", sentences.shape)
+
+# sentences = item
+# print("Shape of a sample mini-batch: ", sentences.shape)
 
 # # ###########################
 # # Loop #
@@ -291,5 +303,7 @@ print("Shape of a sample mini-batch: ", sentences.shape)
 # for i in range(len(trainset)):
 #     sample = trainset[i]
 #
-#     print(i, sample['sentence'][0].shape,sample['sentence'][1].shape)
+#     print(i, sample['sentence'].shape)
+#     print(sample['sentence'][0])
+#
 #     break
