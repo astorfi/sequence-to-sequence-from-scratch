@@ -338,6 +338,11 @@ trainset = Dataset(phase='train', lang_in=lang_in, lang_out=lang_out, max_input_
 input_lang, output_lang = trainset.langs()
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=1,
                                           shuffle=True, num_workers=1, pin_memory=False)
+def cycle(iterable):
+    while True:
+        for x in iterable:
+            yield x
+
 dataiter = iter(trainloader)
 
 # input_lang, output_lang, pairs = prepareData('eng', 'fra', True)
@@ -723,7 +728,6 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
         target_tensor = training_pair['sentence'][:,:,0,:]
         target_tensor = reformat_tensor_(target_tensor)
 
-
         if device == torch.device("cuda"):
             input_tensor = input_tensor.cuda()
             target_tensor = target_tensor.cuda()
@@ -861,7 +865,7 @@ hidden_size = 256
 encoder1 = EncoderRNN(input_lang.n_words, hidden_size).to(device)
 decoder1 = DecoderRNN(hidden_size, output_lang.n_words).to(device)
 
-trainIters(encoder1, decoder1, 75000, print_every=5000)
+trainIters(encoder1, decoder1, 7500, print_every=500)
 
 ######################################################################
 #
