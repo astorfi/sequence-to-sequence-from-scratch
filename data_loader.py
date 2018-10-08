@@ -12,6 +12,7 @@ import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
 import argparse
+from _utils.transformer import *
 
 
 # Useful function for arguments.
@@ -143,13 +144,13 @@ eng_prefixes = (
     "they are", "they re "
 )
 
-def filterPair(p):
-    return len(p[0].split(' ')) < MAX_LENGTH and \
-           len(p[1].split(' ')) < MAX_LENGTH and \
+def filterPair(p, max_input_length):
+    return len(p[0].split(' ')) < max_input_length and \
+           len(p[1].split(' ')) < max_input_length and \
            p[1].startswith(eng_prefixes)
 
-def filterPairs(pairs):
-    return [pair for pair in pairs if filterPair(pair)]
+def filterPairs(pairs, max_input_length):
+    return [pair for pair in pairs if filterPair(pair , max_input_length)]
 
 ######################################################################
 # The full process for preparing the data is:
@@ -159,10 +160,10 @@ def filterPairs(pairs):
 # -  Make word lists from sentences in pairs
 #
 
-def prepareData(lang1, lang2, reverse=False):
+def prepareData(lang1, lang2, max_input_length, reverse=False):
     input_lang, output_lang, pairs = readLangs(lang1, lang2, reverse)
     print("Read %s sentence pairs" % len(pairs))
-    pairs = filterPairs(pairs)
+    pairs = filterPairs(pairs, max_input_length)
     print("Trimmed to %s sentence pairs" % len(pairs))
     print("Counting words...")
     for pair in pairs:
@@ -183,44 +184,7 @@ def prepareData(lang1, lang2, reverse=False):
 # Training
 # ========
 #
-# Preparing Training Data
-# -----------------------
-#
-# To train, for each pair we will need an input tensor (indexes of the
-# words in the input sentence) and target tensor (indexes of the words in
-# the target sentence). While creating these vectors we will append the
-# EOS token to both sequences.
-#
 
-def indexesFromSentence(lang, sentence):
-    return [lang.word2index[word] for word in sentence.split(' ')]
-
-
-def tensorFromSentence(lang, sentence):
-    indexes = indexesFromSentence(lang, sentence)
-    indexes.append(EOS_token)
-    return torch.tensor(indexes, dtype=torch.long).view(1, -1)
-
-
-def tensorsFromPair(pair, input_lang, output_lang, max_input_length):
-    input_tensor = tensorFromSentence(input_lang, pair[0])
-    target_tensor = tensorFromSentence(output_lang, pair[1])
-
-    with torch.no_grad():
-
-        # Pad buttom with zeros for getting a fixed length.
-        pad_input = nn.ConstantPad1d((0, max_input_length - input_tensor.shape[1]),-1)
-        pad_target = nn.ConstantPad1d((0, max_input_length - target_tensor.shape[1]), -1)
-
-        # Padding operation
-        input_tensor_padded = pad_input(input_tensor)
-        target_tensor_padded = pad_target(target_tensor)
-
-    # The "pad_sequence" function is used to pad the shorter sentence to make the tensors of equal size
-    from torch.nn.utils.rnn import pad_sequence
-    pair_tensor = pad_sequence([input_tensor_padded, target_tensor_padded], batch_first=False, padding_value=-1)
-
-    return pair_tensor
 
 
 ########################
@@ -243,7 +207,7 @@ class Dataset():
         """
 
         # Skip and eliminate the sentences with a length larger than max_input_length!
-        input_lang, output_lang, pairs = prepareData(lang_in, lang_out, True)
+        input_lang, output_lang, pairs = prepareData(lang_in, lang_out, max_input_length, True)
         print(random.choice(pairs))
 
         if phase == 'train':
@@ -263,7 +227,7 @@ class Dataset():
         self.output_lang = output_lang
 
     def langs(self):
-        return self.input_lang, self.input_lang
+        return self.input_lang, self.output_lang
 
 
     def __len__(self):

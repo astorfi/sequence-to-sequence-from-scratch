@@ -97,6 +97,7 @@ import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
 from data_loader import Dataset
+from _utils import transformer
 import argparse
 
 # Useful function for arguments.
@@ -123,7 +124,7 @@ parser.add_argument('--epochs_per_lr_drop', default=450, type=float,
 parser.add_argument('--batch_size', default=128, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=8, type=int, help='Number of workers used in dataloading')
 parser.add_argument('--num_epoch', default=600, type=int, help='Number of training iterations')
-parser.add_argument('--cuda', default=True, type=str2bool, help='Use cuda to train model')
+parser.add_argument('--cuda', default=False, type=str2bool, help='Use cuda to train model')
 parser.add_argument('--save_folder', default=os.path.expanduser('~/weights'), help='Location to save checkpoint models')
 parser.add_argument('--epochs_per_save', default=10, type=int,
                     help='number of epochs for which the model will be saved')
@@ -338,11 +339,6 @@ trainset = Dataset(phase='train', lang_in=lang_in, lang_out=lang_out, max_input_
 input_lang, output_lang = trainset.langs()
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=1,
                                           shuffle=True, num_workers=1, pin_memory=False)
-def cycle(iterable):
-    while True:
-        for x in iterable:
-            yield x
-
 dataiter = iter(trainloader)
 
 # input_lang, output_lang, pairs = prepareData('eng', 'fra', True)
@@ -725,7 +721,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
         input_tensor = reformat_tensor_(input_tensor)
 
         # Target
-        target_tensor = training_pair['sentence'][:,:,0,:]
+        target_tensor = training_pair['sentence'][:,:,1,:]
         target_tensor = reformat_tensor_(target_tensor)
 
         if device == torch.device("cuda"):
@@ -790,10 +786,10 @@ def showPlot(points):
 # attention outputs for display later.
 #
 
-def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
+def evaluate(encoder, decoder, input_tensor, max_length=MAX_LENGTH):
     with torch.no_grad():
-        input_tensor = tensorFromSentence(input_lang, sentence)
-        input_length = input_tensor.size()[0]
+
+        input_length = input_tensor.size(0)
         encoder_hidden = encoder.initHidden()
         encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
 
@@ -833,12 +829,20 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
 
 def evaluateRandomly(encoder, decoder, n=10):
     for i in range(n):
-        pair = random.choice(pairs)
-        print('>', pair[0])
-        print('=', pair[1])
-        output_words = evaluate(encoder, decoder, pair[0])
+        pair = trainset[i]['sentence']
+        input_tensor = reformat_tensor_(pair[:,0,:].view(1,1,-1))
+        output_tensor = reformat_tensor_(pair[:,1,:].view(1,1,-1))
+        if device == torch.device("cuda"):
+            input_tensor = input_tensor.cuda()
+            output_tensor = output_tensor.cuda()
+
+        input_sentence = ' '.join(transformer.SentenceFromTensor_(input_lang, input_tensor))
+        output_sentence = ' '.join(transformer.SentenceFromTensor_(output_lang, output_tensor))
+        print('Input: ', input_sentence)
+        print('Output: ', output_sentence)
+        output_words = evaluate(encoder, decoder, input_tensor)
         output_sentence = ' '.join(output_words)
-        print('<', output_sentence)
+        print('Predicted Output: ', output_sentence)
         print('')
 
 
