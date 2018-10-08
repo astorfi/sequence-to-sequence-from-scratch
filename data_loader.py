@@ -199,7 +199,6 @@ def indexesFromSentence(lang, sentence):
 def tensorFromSentence(lang, sentence):
     indexes = indexesFromSentence(lang, sentence)
     indexes.append(EOS_token)
-    # return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
     return torch.tensor(indexes, dtype=torch.long).view(1, -1)
 
 
@@ -232,7 +231,7 @@ def tensorsFromPair(pair, input_lang, output_lang, max_input_length):
 class Dataset():
     """Face Landmarks dataset."""
 
-    def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None):
+    def __init__(self, phase, lang_in='eng', lang_out='fra', num_embeddings=None, max_input_length=None, transform=None):
         """
         Args:
             split (string): Here we define the split. The choices are: 'trnid', 'tstid' and 'valid' based on flower dataset.
@@ -242,12 +241,9 @@ class Dataset():
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        self.transform = transform
-        self.num_embeddings = num_embeddings
-        self.max_input_length = max_input_length
 
         # Skip and eliminate the sentences with a length larger than max_input_length!
-        input_lang, output_lang, pairs = prepareData('eng', 'fra', True)
+        input_lang, output_lang, pairs = prepareData(lang_in, lang_out, True)
         print(random.choice(pairs))
 
         if phase == 'train':
@@ -256,10 +252,19 @@ class Dataset():
             selected_pairs = pairs[int(0.8 * len(pairs)):]
 
         # Getting the tensors
-        selected_pairs_tensors = [tensorsFromPair(selected_pairs[i], input_lang, output_lang, self.max_input_length)
+        selected_pairs_tensors = [tensorsFromPair(selected_pairs[i], input_lang, output_lang, max_input_length)
                      for i in range(len(selected_pairs))]
 
+        self.transform = transform
+        self.num_embeddings = num_embeddings
+        self.max_input_length = max_input_length
         self.data = selected_pairs_tensors
+        self.input_lang = input_lang
+        self.output_lang = output_lang
+
+    def langs(self):
+        return self.input_lang, self.input_lang
+
 
     def __len__(self):
         return len(self.data)
@@ -279,10 +284,10 @@ class Dataset():
 
 
 
-#######################################
-# Uncomment for testing dataset class #
-#######################################
-
+# ######################################
+# #Uncomment for testing dataset class #
+# ######################################
+#
 # # Create training data object
 # trainset = Dataset(phase='train', max_input_length=10)
 # trainloader = torch.utils.data.DataLoader(trainset, batch_size=32,

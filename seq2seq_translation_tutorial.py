@@ -138,8 +138,10 @@ parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use aut
 # Add all arguments to parser
 args = parser.parse_args()
 
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if args.cuda:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+else:
+    device = torch.device("cpu")
 
 ######################################################################
 # Loading data files
@@ -327,8 +329,19 @@ def prepareData(lang1, lang2, reverse=False):
     return input_lang, output_lang, pairs
 
 
-input_lang, output_lang, pairs = prepareData('eng', 'fra', True)
-print(random.choice(pairs))
+
+
+# Create training data object
+lang_in = 'eng'
+lang_out = 'fra'
+trainset = Dataset(phase='train', lang_in=lang_in, lang_out=lang_out, max_input_length=10)
+input_lang, output_lang = trainset.langs()
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=1,
+                                          shuffle=True, num_workers=1, pin_memory=False)
+dataiter = iter(trainloader)
+
+# input_lang, output_lang, pairs = prepareData('eng', 'fra', True)
+# print(random.choice(pairs))
 
 
 ######################################################################
@@ -397,9 +410,7 @@ class EncoderRNN(nn.Module):
         return output, hidden
 
     def initHidden(self):
-        # return torch.zeros(1, 1, self.hidden_size, device=device)
-        # return [torch.zeros(1, 1, self.hidden_size, device=device) , torch.zeros(1, 1, self.hidden_size, device=device)]
-        return [torch.zeros(1, 1, self.hidden_size) , torch.zeros(1, 1, self.hidden_size)]
+        return [torch.zeros(1, 1, self.hidden_size, device=device) , torch.zeros(1, 1, self.hidden_size, device=device)]
 
 ######################################################################
 # The Decoder
@@ -598,8 +609,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     input_length = input_tensor.size(0)
     target_length = target_tensor.size(0)
 
-    # encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
-    encoder_outputs = torch.zeros(max_length, encoder.hidden_size)
+    encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
 
     loss = 0
 
@@ -608,8 +618,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
             input_tensor[ei], encoder_hidden)
         encoder_outputs[ei] = encoder_output[0, 0]
 
-    decoder_input = torch.tensor([[SOS_token]])
-    # decoder_input = torch.tensor([[SOS_token]], device=device)
+    decoder_input = torch.tensor([[SOS_token]], device=device)
 
     decoder_hidden = encoder_hidden
 
@@ -622,6 +631,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
                 decoder_input, decoder_hidden)
             # decoder_output, decoder_hidden, decoder_attention = decoder(
             #     decoder_input, decoder_hidden, encoder_outputs)
+
             loss += criterion(decoder_output, target_tensor[di])
             decoder_input = target_tensor[di]  # Teacher forcing
 
@@ -635,10 +645,6 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
             topv, topi = decoder_output.topk(1)
             decoder_input = topi.squeeze().detach()  # detach from history as input
 
-            if target_tensor[di] >= 0 and target_tensor[di] < 2925:
-                a = 1
-            else:
-                break
             loss += criterion(decoder_output, target_tensor[di])
             if decoder_input.item() == EOS_token:
                 break
@@ -699,15 +705,9 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
 
     encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
-    training_pairs = [tensorsFromPair(random.choice(pairs))
-                      for i in range(n_iters)]
+    # training_pairs = [tensorsFromPair(random.choice(pairs))
+    #                   for i in range(n_iters)]
     criterion = nn.CrossEntropyLoss()
-
-    # Create training data object
-    trainset = Dataset(phase='train', max_input_length=10)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=1,
-                                              shuffle=True, num_workers=1, pin_memory=False)
-    dataiter = iter(trainloader)
 
 
     for iteration in range(1, n_iters + 1):
@@ -718,16 +718,20 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
         # Input
         input_tensor = training_pair['sentence'][:,:,0,:]
         input_tensor = reformat_tensor_(input_tensor)
-        # input_tensor = input_tensor.cuda()
 
         # Target
         target_tensor = training_pair['sentence'][:,:,0,:]
         target_tensor = reformat_tensor_(target_tensor)
-        # target_tensor = target_tensor.cuda()
 
-        training_pair = training_pairs[iteration - 1]
-        input_tensor_test = training_pair[0]
-        target_tensor_test = training_pair[1]
+
+        if device == torch.device("cuda"):
+            input_tensor = input_tensor.cuda()
+            target_tensor = target_tensor.cuda()
+
+
+        # training_pair = training_pairs[iteration - 1]
+        # input_tensor_test = training_pair[0]
+        # target_tensor_test = training_pair[1]
 
         loss = train(input_tensor, target_tensor, encoder,
                      decoder, encoder_optimizer, decoder_optimizer, criterion)
@@ -787,17 +791,14 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
         input_tensor = tensorFromSentence(input_lang, sentence)
         input_length = input_tensor.size()[0]
         encoder_hidden = encoder.initHidden()
-
-        encoder_outputs = torch.zeros(max_length, encoder.hidden_size)
-        # encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
+        encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
 
         for ei in range(input_length):
             encoder_output, encoder_hidden = encoder(input_tensor[ei],
                                                      encoder_hidden)
             encoder_outputs[ei] += encoder_output[0, 0]
 
-        # decoder_input = torch.tensor([[SOS_token]], device=device)  # SOS
-        decoder_input = torch.tensor([[SOS_token]])  # SOS
+        decoder_input = torch.tensor([[SOS_token]], device=device)  # SOS
 
         decoder_hidden = encoder_hidden
 
@@ -857,10 +858,8 @@ def evaluateRandomly(encoder, decoder, n=10):
 #
 
 hidden_size = 256
-encoder1 = EncoderRNN(input_lang.n_words, hidden_size)
-# encoder1 = EncoderRNN(input_lang.n_words, hidden_size).to(device)
-decoder1 = DecoderRNN(hidden_size, output_lang.n_words)
-# decoder1 = DecoderRNN(hidden_size, output_lang.n_words).to(device)
+encoder1 = EncoderRNN(input_lang.n_words, hidden_size).to(device)
+decoder1 = DecoderRNN(hidden_size, output_lang.n_words).to(device)
 
 trainIters(encoder1, decoder1, 75000, print_every=5000)
 
