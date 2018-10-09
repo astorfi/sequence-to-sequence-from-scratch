@@ -617,11 +617,11 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
         # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
         # the new input sequence as a continuation of the previous sequence
         encoder_hidden = encoder.initHidden()
-        input_tensor = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
-        input_length = input_tensor.size(0)
+        input_tensor_step = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
+        input_length = input_tensor_step.size(0)
         for ei in range(input_length):
             encoder_output, encoder_hidden = encoder(
-                input_tensor[ei], encoder_hidden, mask_input)
+                input_tensor_step[ei], encoder_hidden, mask_input)
             encoder_outputs[step_idx, ei, :] = encoder_output[0, 0]
         encoder_hiddens.append(encoder_hidden)
 
@@ -631,7 +631,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
 
     decoder_input = torch.tensor([[SOS_token]], device=device)
 
-    decoder_hidden = encoder_hidden
+    decoder_hiddens = encoder_hiddens
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
     use_teacher_forcing = False
@@ -644,7 +644,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
 
             target_tensor = target_tensor[:, step_idx][target_tensor[:, step_idx] != 0]
             target_length = target_tensor.size(0)
-            decoder_hidden = decoder_hidden[step_idx]
+            decoder_hidden = decoder_hiddens[step_idx]
             # Teacher forcing: Feed the target as the next input
             for di in range(target_length):
                 decoder_output, decoder_hidden = decoder(
@@ -652,17 +652,17 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
                 # decoder_output, decoder_hidden, decoder_attention = decoder(
                 #     decoder_input, decoder_hidden, encoder_outputs)
 
-                loss += criterion(decoder_output, target_tensor[di])
-                decoder_input = target_tensor[di]  # Teacher forcing
+                loss += criterion(decoder_output, target_tensor[di].view(1))
+                decoder_input = target_tensor[di].view(1)  # Teacher forcing
 
     else:
         for step_idx in range(args.batch_size):
             # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
             # the new input sequence as a continuation of the previous sequence
 
-            target_tensor = target_tensor[:, step_idx][target_tensor[:, step_idx] != 0]
-            target_length = target_tensor.size(0)
-            decoder_hidden = decoder_hidden[step_idx]
+            target_tensor_step = target_tensor[:, step_idx][target_tensor[:, step_idx] != 0]
+            target_length = target_tensor_step.size(0)
+            decoder_hidden = decoder_hiddens[step_idx]
 
             # Without teacher forcing: use its own predictions as the next input
             for di in range(target_length):
@@ -673,7 +673,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
                 topv, topi = decoder_output.topk(1)
                 decoder_input = topi.squeeze().detach()  # detach from history as input
 
-                loss += criterion(decoder_output, target_tensor[di])
+                loss += criterion(decoder_output, target_tensor_step[di].view(1))
                 if decoder_input.item() == EOS_token:
                     break
         loss = loss / args.batch_size
