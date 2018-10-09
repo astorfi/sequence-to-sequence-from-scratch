@@ -121,7 +121,7 @@ parser.add_argument('--epochs_per_lr_drop', default=450, type=float,
 ##################
 # Training Flags #
 ##################
-parser.add_argument('--batch_size', default=128, type=int, help='Batch size for training')
+parser.add_argument('--batch_size', default=32, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=8, type=int, help='Number of workers used in dataloading')
 parser.add_argument('--num_epoch', default=600, type=int, help='Number of training iterations')
 parser.add_argument('--cuda', default=False, type=str2bool, help='Use cuda to train model')
@@ -337,7 +337,7 @@ lang_in = 'eng'
 lang_out = 'fra'
 trainset = Dataset(phase='train', lang_in=lang_in, lang_out=lang_out, max_input_length=10)
 input_lang, output_lang = trainset.langs()
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=1,
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size,
                                           shuffle=True, num_workers=1, pin_memory=False)
 dataiter = iter(trainloader)
 
@@ -396,22 +396,24 @@ dataiter = iter(trainloader)
 #
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, batch_size, num_layers=1):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
-
-        self.embedding = nn.Embedding(input_size, hidden_size)
+        self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
         # self.gru = nn.GRU(hidden_size, hidden_size)
-        self.lstm = nn.LSTM(hidden_size, hidden_size)
+        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size)
+        self.batch_size = batch_size
+        self.num_layers = num_layers
 
-    def forward(self, input, hidden):
+    def forward(self, input, hidden, mask):
+        # The argument input.size(0) is the batch size
         embedded = self.embedding(input).view(1, 1, -1)
         rnn_input = embedded
         output, hidden = self.lstm(rnn_input, hidden)
         return output, hidden
 
     def initHidden(self):
-        return [torch.zeros(1, 1, self.hidden_size, device=device) , torch.zeros(1, 1, self.hidden_size, device=device)]
+        return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device) , torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
 
 ######################################################################
 # The Decoder
@@ -442,7 +444,7 @@ class EncoderRNN(nn.Module):
 #
 
 class DecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size):
+    def __init__(self, hidden_size, output_size, batch_size):
         super(DecoderRNN, self).__init__()
         self.hidden_size = hidden_size
 
@@ -460,7 +462,7 @@ class DecoderRNN(nn.Module):
         return output, hidden
 
     def initHidden(self):
-        return [torch.zeros(1, 1, self.hidden_size, device=device) , torch.zeros(1, 1, self.hidden_size, device=device)]
+        return [torch.zeros(1, 1, self.hidden_size, device=device), torch.zeros(1, 1, self.hidden_size, device=device)]
 
 ######################################################################
 # I encourage you to train and observe the results of this model, but to
@@ -601,54 +603,80 @@ def tensorsFromPair(pair):
 teacher_forcing_ratio = 0.5
 
 
-def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length=MAX_LENGTH):
-    encoder_hidden = encoder.initHidden()
+def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length=MAX_LENGTH):
 
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
 
-    input_length = input_tensor.size(0)
-    target_length = target_tensor.size(0)
-
-    encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
-
+    encoder_outputs = torch.zeros(args.batch_size, max_length, encoder.hidden_size, device=device)
+    # encoder_hiddens = torch.zeros(args.batch_size, encoder.hidden_size, device=device)
+    encoder_hiddens = []
     loss = 0
 
-    for ei in range(input_length):
-        encoder_output, encoder_hidden = encoder(
-            input_tensor[ei], encoder_hidden)
-        encoder_outputs[ei] = encoder_output[0, 0]
+    for step_idx in range(args.batch_size):
+        # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
+        # the new input sequence as a continuation of the previous sequence
+        encoder_hidden = encoder.initHidden()
+        input_tensor = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
+        input_length = input_tensor.size(0)
+        for ei in range(input_length):
+            encoder_output, encoder_hidden = encoder(
+                input_tensor[ei], encoder_hidden, mask_input)
+            encoder_outputs[step_idx, ei, :] = encoder_output[0, 0]
+        encoder_hiddens.append(encoder_hidden)
+
+
+
+
 
     decoder_input = torch.tensor([[SOS_token]], device=device)
 
     decoder_hidden = encoder_hidden
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
+    use_teacher_forcing = False
 
     if use_teacher_forcing:
-        # Teacher forcing: Feed the target as the next input
-        for di in range(target_length):
-            decoder_output, decoder_hidden = decoder(
-                decoder_input, decoder_hidden)
-            # decoder_output, decoder_hidden, decoder_attention = decoder(
-            #     decoder_input, decoder_hidden, encoder_outputs)
 
-            loss += criterion(decoder_output, target_tensor[di])
-            decoder_input = target_tensor[di]  # Teacher forcing
+        for step_idx in range(args.batch_size):
+            # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
+            # the new input sequence as a continuation of the previous sequence
+
+            target_tensor = target_tensor[:, step_idx][target_tensor[:, step_idx] != 0]
+            target_length = target_tensor.size(0)
+            decoder_hidden = decoder_hidden[step_idx]
+            # Teacher forcing: Feed the target as the next input
+            for di in range(target_length):
+                decoder_output, decoder_hidden = decoder(
+                    decoder_input, decoder_hidden, mask_target)
+                # decoder_output, decoder_hidden, decoder_attention = decoder(
+                #     decoder_input, decoder_hidden, encoder_outputs)
+
+                loss += criterion(decoder_output, target_tensor[di])
+                decoder_input = target_tensor[di]  # Teacher forcing
 
     else:
-        # Without teacher forcing: use its own predictions as the next input
-        for di in range(target_length):
-            # decoder_output, decoder_hidden, decoder_attention = decoder(
-            #     decoder_input, decoder_hidden, encoder_outputs)
-            decoder_output, decoder_hidden = decoder(
-                decoder_input, decoder_hidden)
-            topv, topi = decoder_output.topk(1)
-            decoder_input = topi.squeeze().detach()  # detach from history as input
+        for step_idx in range(args.batch_size):
+            # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
+            # the new input sequence as a continuation of the previous sequence
 
-            loss += criterion(decoder_output, target_tensor[di])
-            if decoder_input.item() == EOS_token:
-                break
+            target_tensor = target_tensor[:, step_idx][target_tensor[:, step_idx] != 0]
+            target_length = target_tensor.size(0)
+            decoder_hidden = decoder_hidden[step_idx]
+
+            # Without teacher forcing: use its own predictions as the next input
+            for di in range(target_length):
+                # decoder_output, decoder_hidden, decoder_attention = decoder(
+                #     decoder_input, decoder_hidden, encoder_outputs)
+                decoder_output, decoder_hidden = decoder(
+                    decoder_input, decoder_hidden)
+                topv, topi = decoder_output.topk(1)
+                decoder_input = topi.squeeze().detach()  # detach from history as input
+
+                loss += criterion(decoder_output, target_tensor[di])
+                if decoder_input.item() == EOS_token:
+                    break
+        loss = loss / args.batch_size
 
     loss.backward()
 
@@ -693,9 +721,16 @@ def timeSince(since, percent):
 # of examples, time so far, estimated time) and average loss.
 
 def reformat_tensor_(tensor):
-    tensor = tensor.squeeze(dim=0)
-    tensor = tensor.transpose(1, 0)
+    tensor = tensor.transpose(0, 2, 1)
+    tensor = tensor.squeeze()
     return tensor[tensor != -1].view(-1, 1)
+
+def reformat_tensor_mask(tensor):
+    tensor = tensor.squeeze(dim=1)
+    tensor = tensor.transpose(1,0)
+    mask = tensor != -1
+    return tensor, mask
+
 
 
 def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
@@ -718,11 +753,11 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
 
         # Input
         input_tensor = training_pair['sentence'][:,:,0,:]
-        input_tensor = reformat_tensor_(input_tensor)
+        input_tensor, mask_input = reformat_tensor_mask(input_tensor)
 
         # Target
         target_tensor = training_pair['sentence'][:,:,1,:]
-        target_tensor = reformat_tensor_(target_tensor)
+        target_tensor, mask_target = reformat_tensor_mask(target_tensor)
 
         if device == torch.device("cuda"):
             input_tensor = input_tensor.cuda()
@@ -733,7 +768,7 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
         # input_tensor_test = training_pair[0]
         # target_tensor_test = training_pair[1]
 
-        loss = train(input_tensor, target_tensor, encoder,
+        loss = train(input_tensor, target_tensor, mask_input, mask_target, encoder,
                      decoder, encoder_optimizer, decoder_optimizer, criterion)
         print_loss_total += loss
         plot_loss_total += loss
@@ -830,8 +865,8 @@ def evaluate(encoder, decoder, input_tensor, max_length=MAX_LENGTH):
 def evaluateRandomly(encoder, decoder, n=10):
     for i in range(n):
         pair = trainset[i]['sentence']
-        input_tensor = reformat_tensor_(pair[:,0,:].view(1,1,-1))
-        output_tensor = reformat_tensor_(pair[:,1,:].view(1,1,-1))
+        input_tensor = reformat_tensor_mask(pair[:,0,:].view(1,1,-1))
+        output_tensor = reformat_tensor_mask(pair[:,1,:].view(1,1,-1))
         if device == torch.device("cuda"):
             input_tensor = input_tensor.cuda()
             output_tensor = output_tensor.cuda()
@@ -866,8 +901,8 @@ def evaluateRandomly(encoder, decoder, n=10):
 #
 
 hidden_size = 256
-encoder1 = EncoderRNN(input_lang.n_words, hidden_size).to(device)
-decoder1 = DecoderRNN(hidden_size, output_lang.n_words).to(device)
+encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_layers=1).to(device)
+decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size).to(device)
 
 trainIters(encoder1, decoder1, 7500, print_every=500)
 

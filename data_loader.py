@@ -46,15 +46,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ``word2count`` to use to later replace rare words.
 #
 
-SOS_token = 0
-EOS_token = 1
+SOS_token = 1
+EOS_token = 2
 
 class Lang:
     def __init__(self, name):
         self.name = name
         self.word2index = {}
         self.word2count = {}
-        self.index2word = {0: "SOS", 1: "EOS"}
+        self.index2word = {1: "SOS", 2: "EOS"}
         self.n_words = 2  # Count SOS and EOS
 
     def addSentence(self, sentence):
@@ -63,10 +63,10 @@ class Lang:
 
     def addWord(self, word):
         if word not in self.word2index:
+            self.n_words += 1
             self.word2index[word] = self.n_words
             self.word2count[word] = 1
             self.index2word[self.n_words] = word
-            self.n_words += 1
         else:
             self.word2count[word] += 1
 
@@ -150,7 +150,7 @@ def filterPair(p, max_input_length):
            p[1].startswith(eng_prefixes)
 
 def filterPairs(pairs, max_input_length):
-    return [pair for pair in pairs if filterPair(pair , max_input_length)]
+    return [pair for pair in pairs if filterPair(pair, max_input_length)]
 
 ######################################################################
 # The full process for preparing the data is:

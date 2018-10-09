@@ -50,8 +50,8 @@ def tensorsFromPair(pair, input_lang, output_lang, max_input_length):
     with torch.no_grad():
 
         # Pad buttom with zeros for getting a fixed length.
-        pad_input = nn.ConstantPad1d((0, max_input_length - input_tensor.shape[1]),-1)
-        pad_target = nn.ConstantPad1d((0, max_input_length - target_tensor.shape[1]), -1)
+        pad_input = nn.ConstantPad1d((0, max_input_length - input_tensor.shape[1]), 0)
+        pad_target = nn.ConstantPad1d((0, max_input_length - target_tensor.shape[1]), 0)
 
         # Padding operation
         input_tensor_padded = pad_input(input_tensor)
@@ -59,6 +59,6 @@ def tensorsFromPair(pair, input_lang, output_lang, max_input_length):
 
     # The "pad_sequence" function is used to pad the shorter sentence to make the tensors of equal size
     from torch.nn.utils.rnn import pad_sequence
-    pair_tensor = pad_sequence([input_tensor_padded, target_tensor_padded], batch_first=False, padding_value=-1)
+    pair_tensor = pad_sequence([input_tensor_padded, target_tensor_padded], batch_first=False, padding_value=0)
 
     return pair_tensor
