@@ -338,7 +338,7 @@ lang_out = 'fra'
 trainset = Dataset(phase='train', lang_in=lang_in, lang_out=lang_out, max_input_length=10)
 input_lang, output_lang = trainset.langs()
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size,
-                                          shuffle=True, num_workers=1, pin_memory=False)
+                                          shuffle=True, num_workers=1, pin_memory=False, drop_last=True)
 dataiter = iter(trainloader)
 
 # input_lang, output_lang, pairs = prepareData('eng', 'fra', True)
@@ -901,7 +901,7 @@ encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_laye
 decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size).to(device)
 
 num_epochs = 1
-for i in num_epochs:
+for i in range(num_epochs):
     trainIters(encoder1, decoder1, print_every=10)
 
 ######################################################################
