@@ -617,7 +617,6 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
         # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
         # the new input sequence as a continuation of the previous sequence
         encoder_hidden = encoder.initHidden()
-        print(input_tensor.size(0),input_tensor.size(1))
         input_tensor_step = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
         input_length = input_tensor_step.size(0)
         for ei in range(input_length):
@@ -730,7 +729,8 @@ def reformat_tensor_mask(tensor):
 
 
 
-def trainIters(encoder, decoder, print_every=1000, plot_every=100, learning_rate=0.01):
+def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+
     start = time.time()
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
@@ -901,8 +901,9 @@ encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_laye
 decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size).to(device)
 
 num_epochs = 1
+n_iters = num_epochs * int(len(trainset) / args.batch_size)
 for i in range(num_epochs):
-    trainIters(encoder1, decoder1, print_every=10)
+    trainIters(encoder1, decoder1, n_iters, print_every=10)
 
 ######################################################################
 #
