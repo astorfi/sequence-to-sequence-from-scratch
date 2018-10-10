@@ -124,7 +124,7 @@ parser.add_argument('--epochs_per_lr_drop', default=450, type=float,
 parser.add_argument('--batch_size', default=1, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=8, type=int, help='Number of workers used in dataloading')
 parser.add_argument('--num_epoch', default=600, type=int, help='Number of training iterations')
-parser.add_argument('--cuda', default=False, type=str2bool, help='Use cuda to train model')
+parser.add_argument('--cuda', default=True, type=str2bool, help='Use cuda to train model')
 parser.add_argument('--save_folder', default=os.path.expanduser('~/weights'), help='Location to save checkpoint models')
 parser.add_argument('--epochs_per_save', default=10, type=int,
                     help='number of epochs for which the model will be saved')
@@ -737,7 +737,9 @@ def reformat_tensor_mask(tensor):
 
 
 
-def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+def trainIters(encoder, decoder, print_every=1000, plot_every=100, learning_rate=0.01):
+
+
 
     start = time.time()
     plot_losses = []
@@ -750,45 +752,50 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
     #                   for i in range(n_iters)]
     criterion = nn.CrossEntropyLoss()
 
-    for iteration, data in enumerate(trainloader, 1):
+    num_epochs = 3
+    n_iters = num_epochs * int(len(trainset) / args.batch_size)
+    for i in range(num_epochs):
 
-        # Get a batch
-        training_pair = data
+        for iteration, data in enumerate(trainloader, 1):
 
-        # Input
-        input_tensor = training_pair['sentence'][:,:,0,:]
-        input_tensor, mask_input = reformat_tensor_mask(input_tensor)
+            # Get a batch
+            training_pair = data
 
-        # Target
-        target_tensor = training_pair['sentence'][:,:,1,:]
-        target_tensor, mask_target = reformat_tensor_mask(target_tensor)
+            # Input
+            input_tensor = training_pair['sentence'][:,:,0,:]
+            input_tensor, mask_input = reformat_tensor_mask(input_tensor)
 
-        if device == torch.device("cuda"):
-            input_tensor = input_tensor.cuda()
-            target_tensor = target_tensor.cuda()
+            # Target
+            target_tensor = training_pair['sentence'][:,:,1,:]
+            target_tensor, mask_target = reformat_tensor_mask(target_tensor)
+
+            if device == torch.device("cuda"):
+                input_tensor = input_tensor.cuda()
+                target_tensor = target_tensor.cuda()
 
 
-        # training_pair = training_pairs[iteration - 1]
-        # input_tensor_test = training_pair[0]
-        # target_tensor_test = training_pair[1]
+            # training_pair = training_pairs[iteration - 1]
+            # input_tensor_test = training_pair[0]
+            # target_tensor_test = training_pair[1]
 
-        loss = train(input_tensor, target_tensor, mask_input, mask_target, encoder,
-                     decoder, encoder_optimizer, decoder_optimizer, criterion)
-        print_loss_total += loss
-        plot_loss_total += loss
+            loss = train(input_tensor, target_tensor, mask_input, mask_target, encoder,
+                         decoder, encoder_optimizer, decoder_optimizer, criterion)
+            print_loss_total += loss
+            plot_loss_total += loss
 
-        if iteration % print_every == 0:
-            print_loss_avg = print_loss_total / print_every
-            print_loss_total = 0
-            print('%s (%d %d%%) %.4f' % (timeSince(start, iteration / n_iters),
-                                         iteration, iteration / n_iters * 100, print_loss_avg))
+            if iteration % print_every == 0:
+                print_loss_avg = print_loss_total / print_every
+                print_loss_total = 0
+                print('%s (%d %d%%) %.4f' % (timeSince(start, iteration / n_iters),
+                                             iteration, iteration / n_iters * 100, print_loss_avg))
 
-        if iteration % plot_every == 0:
-            plot_loss_avg = plot_loss_total / plot_every
-            plot_losses.append(plot_loss_avg)
-            plot_loss_total = 0
+            if iteration % plot_every == 0:
+                plot_loss_avg = plot_loss_total / plot_every
+                plot_losses.append(plot_loss_avg)
+                plot_loss_total = 0
 
-        # break
+            # break
+        print("####### Finished epoch %d of %d ########", (i+1, num_epochs))
 
     showPlot(plot_losses)
 
@@ -912,10 +919,8 @@ hidden_size = 256
 encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_layers=1).to(device)
 decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size).to(device)
 
-num_epochs = 1
-n_iters = num_epochs * int(len(trainset) / args.batch_size)
-for i in range(num_epochs):
-    trainIters(encoder1, decoder1, n_iters, print_every=10)
+
+trainIters(encoder1, decoder1, print_every=10)
 
 ######################################################################
 #
