@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser(description='Creating Classifier')
 ###############
 # Model Flags #
 ###############
-parser.add_argument('--auto_encoder', default=False, type=str2bool, help='Use auto-encoder model')
+parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
 
 # Add all arguments to parser
 args = parser.parse_args()
@@ -54,8 +54,8 @@ class Lang:
         self.name = name
         self.word2index = {}
         self.word2count = {}
-        self.index2word = {1: "SOS", 2: "EOS"}
-        self.n_words = 2  # Count SOS and EOS
+        self.index2word = {0: "<pad>", SOS_token: "SOS", EOS_token: "EOS"}
+        self.n_words = 3  # Count SOS and EOS
 
     def addSentence(self, sentence):
         for word in sentence.split(' '):
@@ -63,10 +63,10 @@ class Lang:
 
     def addWord(self, word):
         if word not in self.word2index:
-            self.n_words += 1
             self.word2index[word] = self.n_words
             self.word2count[word] = 1
             self.index2word[self.n_words] = word
+            self.n_words += 1
         else:
             self.word2count[word] += 1
 
@@ -209,6 +209,9 @@ class Dataset():
         # Skip and eliminate the sentences with a length larger than max_input_length!
         input_lang, output_lang, pairs = prepareData(lang_in, lang_out, max_input_length, True)
         print(random.choice(pairs))
+
+        # Randomize list
+        random.shuffle(pairs)
 
         if phase == 'train':
             selected_pairs = pairs[0:int(0.8 * len(pairs))]

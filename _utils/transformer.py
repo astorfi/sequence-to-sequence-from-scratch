@@ -13,8 +13,8 @@ from torch import optim
 import torch.nn.functional as F
 import argparse
 
-SOS_token = 0
-EOS_token = 1
+SOS_token = 1
+EOS_token = 2
 
 
 

@@ -121,7 +121,7 @@ parser.add_argument('--epochs_per_lr_drop', default=450, type=float,
 ##################
 # Training Flags #
 ##################
-parser.add_argument('--batch_size', default=32, type=int, help='Batch size for training')
+parser.add_argument('--batch_size', default=1, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=8, type=int, help='Number of workers used in dataloading')
 parser.add_argument('--num_epoch', default=600, type=int, help='Number of training iterations')
 parser.add_argument('--cuda', default=False, type=str2bool, help='Use cuda to train model')
@@ -135,6 +135,7 @@ parser.add_argument('--batch_per_log', default=10, type=int, help='Print the log
 ###############
 
 parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
+parser.add_argument('--MAX_LENGTH', default=10, type=int, help='Maximum length of sentence')
 
 # Add all arguments to parser
 args = parser.parse_args()
@@ -143,6 +144,10 @@ if args.cuda:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 else:
     device = torch.device("cpu")
+
+
+SOS_token = 1
+EOS_token = 2
 
 ######################################################################
 # Loading data files
@@ -194,140 +199,139 @@ else:
 # ``word2count`` to use to later replace rare words.
 #
 
-SOS_token = 0
-EOS_token = 1
 
-
-class Lang:
-    def __init__(self, name):
-        self.name = name
-        self.word2index = {}
-        self.word2count = {}
-        self.index2word = {0: "SOS", 1: "EOS"}
-        self.n_words = 2  # Count SOS and EOS
-
-    def addSentence(self, sentence):
-        for word in sentence.split(' '):
-            self.addWord(word)
-
-    def addWord(self, word):
-        if word not in self.word2index:
-            self.word2index[word] = self.n_words
-            self.word2count[word] = 1
-            self.index2word[self.n_words] = word
-            self.n_words += 1
-        else:
-            self.word2count[word] += 1
-
-
-######################################################################
-# The files are all in Unicode, to simplify we will turn Unicode
-# characters to ASCII, make everything lowercase, and trim most
-# punctuation.
 #
-
-# Turn a Unicode string to plain ASCII, thanks to
-# http://stackoverflow.com/a/518232/2809427
-def unicodeToAscii(s):
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', s)
-        if unicodedata.category(c) != 'Mn'
-    )
-
-# Lowercase, trim, and remove non-letter characters
-
-
-def normalizeString(s):
-    s = unicodeToAscii(s.lower().strip())
-    s = re.sub(r"([.!?])", r" \1", s)
-    s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
-    return s
-
-
-######################################################################
-# To read the data file we will split the file into lines, and then split
-# lines into pairs. The files are all English → Other Language, so if we
-# want to translate from Other Language → English I added the ``reverse``
-# flag to reverse the pairs.
 #
-
-def readLangs(lang1, lang2, reverse=False):
-    print("Reading lines...")
-
-    # Read the file and split into lines
-    lines = open('data/%s-%s.txt' % (lang1, lang2), encoding='utf-8').\
-        read().strip().split('\n')
-
-    # Split every line into pairs and normalize
-    pairs = [[normalizeString(s) for s in l.split('\t')] for l in lines]
-
-    if args.auto_encoder:
-        pairs = [[pair[0],pair[1]] for pair in pairs]
-
-    # Reverse pairs, make Lang instances
-    if reverse:
-        pairs = [list(reversed(p)) for p in pairs]
-        input_lang = Lang(lang2)
-        output_lang = Lang(lang1)
-    else:
-        input_lang = Lang(lang1)
-        output_lang = Lang(lang2)
-
-    return input_lang, output_lang, pairs
-
-
-######################################################################
-# Since there are a *lot* of example sentences and we want to train
-# something quickly, we'll trim the data set to only relatively short and
-# simple sentences. Here the maximum length is 10 words (that includes
-# ending punctuation) and we're filtering to sentences that translate to
-# the form "I am" or "He is" etc. (accounting for apostrophes replaced
-# earlier).
+# class Lang:
+#     def __init__(self, name):
+#         self.name = name
+#         self.word2index = {}
+#         self.word2count = {}
+#         self.index2word = {0: "SOS", 1: "EOS"}
+#         self.n_words = 2  # Count SOS and EOS
 #
-
-MAX_LENGTH = 10
-
-eng_prefixes = (
-    "i am ", "i m ",
-    "he is", "he s ",
-    "she is", "she s",
-    "you are", "you re ",
-    "we are", "we re ",
-    "they are", "they re "
-)
-
-
-def filterPair(p):
-    return len(p[0].split(' ')) < MAX_LENGTH and \
-        len(p[1].split(' ')) < MAX_LENGTH and \
-        p[1].startswith(eng_prefixes)
-
-
-def filterPairs(pairs):
-    return [pair for pair in pairs if filterPair(pair)]
-
-
-######################################################################
-# The full process for preparing the data is:
+#     def addSentence(self, sentence):
+#         for word in sentence.split(' '):
+#             self.addWord(word)
 #
-# -  Read text file and split into lines, split lines into pairs
-# -  Normalize text, filter by length and content
-# -  Make word lists from sentences in pairs
+#     def addWord(self, word):
+#         if word not in self.word2index:
+#             self.word2index[word] = self.n_words
+#             self.word2count[word] = 1
+#             self.index2word[self.n_words] = word
+#             self.n_words += 1
+#         else:
+#             self.word2count[word] += 1
 #
-
-def prepareData(lang1, lang2, reverse=False):
-    input_lang, output_lang, pairs = readLangs(lang1, lang2, reverse)
-    print("Read %s sentence pairs" % len(pairs))
-    pairs = filterPairs(pairs)
-    print("Trimmed to %s sentence pairs" % len(pairs))
-    print("Counting words...")
-    for pair in pairs:
-        input_lang.addSentence(pair[0])
-        output_lang.addSentence(pair[1])
-    print("Counted words:")
-    print(input_lang.name, input_lang.n_words)
-    print(output_lang.name, output_lang.n_words)
-    return input_lang, output_lang, pairs
+#
+# ######################################################################
+# # The files are all in Unicode, to simplify we will turn Unicode
+# # characters to ASCII, make everything lowercase, and trim most
+# # punctuation.
+# #
+#
+# # Turn a Unicode string to plain ASCII, thanks to
+# # http://stackoverflow.com/a/518232/2809427
+# def unicodeToAscii(s):
+#     return ''.join(
+#         c for c in unicodedata.normalize('NFD', s)
+#         if unicodedata.category(c) != 'Mn'
+#     )
+#
+# # Lowercase, trim, and remove non-letter characters
+#
+#
+# def normalizeString(s):
+#     s = unicodeToAscii(s.lower().strip())
+#     s = re.sub(r"([.!?])", r" \1", s)
+#     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
+#     return s
+#
+#
+# ######################################################################
+# # To read the data file we will split the file into lines, and then split
+# # lines into pairs. The files are all English → Other Language, so if we
+# # want to translate from Other Language → English I added the ``reverse``
+# # flag to reverse the pairs.
+# #
+#
+# def readLangs(lang1, lang2, reverse=False):
+#     print("Reading lines...")
+#
+#     # Read the file and split into lines
+#     lines = open('data/%s-%s.txt' % (lang1, lang2), encoding='utf-8').\
+#         read().strip().split('\n')
+#
+#     # Split every line into pairs and normalize
+#     pairs = [[normalizeString(s) for s in l.split('\t')] for l in lines]
+#
+#     if args.auto_encoder:
+#         pairs = [[pair[0],pair[1]] for pair in pairs]
+#
+#     # Reverse pairs, make Lang instances
+#     if reverse:
+#         pairs = [list(reversed(p)) for p in pairs]
+#         input_lang = Lang(lang2)
+#         output_lang = Lang(lang1)
+#     else:
+#         input_lang = Lang(lang1)
+#         output_lang = Lang(lang2)
+#
+#     return input_lang, output_lang, pairs
+#
+#
+# ######################################################################
+# # Since there are a *lot* of example sentences and we want to train
+# # something quickly, we'll trim the data set to only relatively short and
+# # simple sentences. Here the maximum length is 10 words (that includes
+# # ending punctuation) and we're filtering to sentences that translate to
+# # the form "I am" or "He is" etc. (accounting for apostrophes replaced
+# # earlier).
+# #
+#
+# MAX_LENGTH = 10
+#
+# eng_prefixes = (
+#     "i am ", "i m ",
+#     "he is", "he s ",
+#     "she is", "she s",
+#     "you are", "you re ",
+#     "we are", "we re ",
+#     "they are", "they re "
+# )
+#
+#
+# def filterPair(p):
+#     return len(p[0].split(' ')) < MAX_LENGTH and \
+#         len(p[1].split(' ')) < MAX_LENGTH and \
+#         p[1].startswith(eng_prefixes)
+#
+#
+# def filterPairs(pairs):
+#     return [pair for pair in pairs if filterPair(pair)]
+#
+#
+# ######################################################################
+# # The full process for preparing the data is:
+# #
+# # -  Read text file and split into lines, split lines into pairs
+# # -  Normalize text, filter by length and content
+# # -  Make word lists from sentences in pairs
+# #
+#
+# def prepareData(lang1, lang2, reverse=False):
+#     input_lang, output_lang, pairs = readLangs(lang1, lang2, reverse)
+#     print("Read %s sentence pairs" % len(pairs))
+#     pairs = filterPairs(pairs)
+#     print("Trimmed to %s sentence pairs" % len(pairs))
+#     print("Counting words...")
+#     for pair in pairs:
+#         input_lang.addSentence(pair[0])
+#         output_lang.addSentence(pair[1])
+#     print("Counted words:")
+#     print(input_lang.name, input_lang.n_words)
+#     print(output_lang.name, output_lang.n_words)
+#     return input_lang, output_lang, pairs
 
 
 
@@ -338,12 +342,13 @@ lang_out = 'fra'
 trainset = Dataset(phase='train', lang_in=lang_in, lang_out=lang_out, max_input_length=10)
 input_lang, output_lang = trainset.langs()
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size,
-                                          shuffle=True, num_workers=1, pin_memory=False, drop_last=True)
+                                          shuffle=True, num_workers=args.num_workers, pin_memory=False, drop_last=True)
 dataiter = iter(trainloader)
 
-# input_lang, output_lang, pairs = prepareData('eng', 'fra', True)
-# print(random.choice(pairs))
-
+# Test
+testset = Dataset(phase='test', lang_in=lang_in, lang_out=lang_out, max_input_length=10)
+testloader = torch.utils.data.DataLoader(testset, batch_size=1,
+                                          shuffle=True, num_workers=1, pin_memory=False, drop_last=True)
 
 ######################################################################
 # The Seq2Seq Model
@@ -405,9 +410,12 @@ class EncoderRNN(nn.Module):
         self.batch_size = batch_size
         self.num_layers = num_layers
 
-    def forward(self, input, hidden, mask):
+    def forward(self, input, hidden):
         # The argument input.size(0) is the batch size
-        embedded = self.embedding(input).view(1, 1, -1)
+        try:
+            embedded = self.embedding(input).view(1, 1, -1)
+        except:
+            print(1)
         rnn_input = embedded
         output, hidden = self.lstm(rnn_input, hidden)
         return output, hidden
@@ -502,41 +510,41 @@ class DecoderRNN(nn.Module):
 #
 #
 
-class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=MAX_LENGTH):
-        super(AttnDecoderRNN, self).__init__()
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        self.dropout_p = dropout_p
-        self.max_length = max_length
-
-        self.embedding = nn.Embedding(self.output_size, self.hidden_size)
-        self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
-        self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
-        self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size)
-        self.out = nn.Linear(self.hidden_size, self.output_size)
-
-    def forward(self, input, hidden, encoder_outputs):
-        embedded = self.embedding(input).view(1, 1, -1)
-        embedded = self.dropout(embedded)
-
-        attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
-        attn_applied = torch.bmm(attn_weights.unsqueeze(0),
-                                 encoder_outputs.unsqueeze(0))
-
-        output = torch.cat((embedded[0], attn_applied[0]), 1)
-        output = self.attn_combine(output).unsqueeze(0)
-
-        output = F.relu(output)
-        output, hidden = self.gru(output, hidden)
-
-        output = F.log_softmax(self.out(output[0]), dim=1)
-        return output, hidden, attn_weights
-
-    def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size, device=device)
+# class AttnDecoderRNN(nn.Module):
+#     def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=MAX_LENGTH):
+#         super(AttnDecoderRNN, self).__init__()
+#         self.hidden_size = hidden_size
+#         self.output_size = output_size
+#         self.dropout_p = dropout_p
+#         self.max_length = max_length
+#
+#         self.embedding = nn.Embedding(self.output_size, self.hidden_size)
+#         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
+#         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
+#         self.dropout = nn.Dropout(self.dropout_p)
+#         self.gru = nn.GRU(self.hidden_size, self.hidden_size)
+#         self.out = nn.Linear(self.hidden_size, self.output_size)
+#
+#     def forward(self, input, hidden, encoder_outputs):
+#         embedded = self.embedding(input).view(1, 1, -1)
+#         embedded = self.dropout(embedded)
+#
+#         attn_weights = F.softmax(
+#             self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
+#         attn_applied = torch.bmm(attn_weights.unsqueeze(0),
+#                                  encoder_outputs.unsqueeze(0))
+#
+#         output = torch.cat((embedded[0], attn_applied[0]), 1)
+#         output = self.attn_combine(output).unsqueeze(0)
+#
+#         output = F.relu(output)
+#         output, hidden = self.gru(output, hidden)
+#
+#         output = F.log_softmax(self.out(output[0]), dim=1)
+#         return output, hidden, attn_weights
+#
+#     def initHidden(self):
+#         return torch.zeros(1, 1, self.hidden_size, device=device)
 
 
 ######################################################################
@@ -557,20 +565,20 @@ class AttnDecoderRNN(nn.Module):
 # EOS token to both sequences.
 #
 
-def indexesFromSentence(lang, sentence):
-    return [lang.word2index[word] for word in sentence.split(' ')]
-
-
-def tensorFromSentence(lang, sentence):
-    indexes = indexesFromSentence(lang, sentence)
-    indexes.append(EOS_token)
-    return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
-
-
-def tensorsFromPair(pair):
-    input_tensor = tensorFromSentence(input_lang, pair[0])
-    target_tensor = tensorFromSentence(output_lang, pair[1])
-    return (input_tensor, target_tensor)
+# def indexesFromSentence(lang, sentence):
+#     return [lang.word2index[word] for word in sentence.split(' ')]
+#
+#
+# def tensorFromSentence(lang, sentence):
+#     indexes = indexesFromSentence(lang, sentence)
+#     indexes.append(EOS_token)
+#     return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
+#
+#
+# def tensorsFromPair(pair):
+#     input_tensor = tensorFromSentence(input_lang, pair[0])
+#     target_tensor = tensorFromSentence(output_lang, pair[1])
+#     return (input_tensor, target_tensor)
 
 
 ######################################################################
@@ -603,7 +611,7 @@ def tensorsFromPair(pair):
 teacher_forcing_ratio = 0.5
 
 
-def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length=MAX_LENGTH):
+def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length=args.MAX_LENGTH):
 
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
@@ -621,7 +629,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
         input_length = input_tensor_step.size(0)
         for ei in range(input_length):
             encoder_output, encoder_hidden = encoder(
-                input_tensor_step[ei], encoder_hidden, mask_input)
+                input_tensor_step[ei], encoder_hidden)
             encoder_outputs[step_idx, ei, :] = encoder_output[0, 0]
         encoder_hiddens.append(encoder_hidden)
 
@@ -724,7 +732,7 @@ def reformat_tensor_(tensor):
 def reformat_tensor_mask(tensor):
     tensor = tensor.squeeze(dim=1)
     tensor = tensor.transpose(1,0)
-    mask = tensor != -1
+    mask = tensor != 0
     return tensor, mask
 
 
@@ -780,6 +788,8 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
+        # break
+
     showPlot(plot_losses)
 
 
@@ -817,7 +827,7 @@ def showPlot(points):
 # attention outputs for display later.
 #
 
-def evaluate(encoder, decoder, input_tensor, max_length=MAX_LENGTH):
+def evaluate(encoder, decoder, input_tensor, max_length=args.MAX_LENGTH):
     with torch.no_grad():
 
         input_length = input_tensor.size(0)
@@ -860,9 +870,11 @@ def evaluate(encoder, decoder, input_tensor, max_length=MAX_LENGTH):
 
 def evaluateRandomly(encoder, decoder, n=10):
     for i in range(n):
-        pair = trainset[i]['sentence']
-        input_tensor = reformat_tensor_mask(pair[:,0,:].view(1,1,-1))
-        output_tensor = reformat_tensor_mask(pair[:,1,:].view(1,1,-1))
+        pair = testset[i]['sentence']
+        input_tensor, mask_input = reformat_tensor_mask(pair[:,0,:].view(1,1,-1))
+        input_tensor = input_tensor[input_tensor != 0]
+        output_tensor, mask_output = reformat_tensor_mask(pair[:,1,:].view(1,1,-1))
+        output_tensor = output_tensor[output_tensor != 0]
         if device == torch.device("cuda"):
             input_tensor = input_tensor.cuda()
             output_tensor = output_tensor.cuda()
