@@ -617,6 +617,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
         # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
         # the new input sequence as a continuation of the previous sequence
         encoder_hidden = encoder.initHidden()
+        print(input_tensor.size(0),input_tensor.size(1))
         input_tensor_step = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
         input_length = input_tensor_step.size(0)
         for ei in range(input_length):
@@ -624,10 +625,6 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
                 input_tensor_step[ei], encoder_hidden, mask_input)
             encoder_outputs[step_idx, ei, :] = encoder_output[0, 0]
         encoder_hiddens.append(encoder_hidden)
-
-
-
-
 
     decoder_input = torch.tensor([[SOS_token]], device=device)
 
@@ -733,7 +730,7 @@ def reformat_tensor_mask(tensor):
 
 
 
-def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+def trainIters(encoder, decoder, print_every=1000, plot_every=100, learning_rate=0.01):
     start = time.time()
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
@@ -745,11 +742,10 @@ def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, lear
     #                   for i in range(n_iters)]
     criterion = nn.CrossEntropyLoss()
 
-
-    for iteration in range(1, n_iters + 1):
+    for iteration, data in enumerate(trainloader, 1):
 
         # Get a batch
-        training_pair = dataiter.next()
+        training_pair = data
 
         # Input
         input_tensor = training_pair['sentence'][:,:,0,:]
@@ -904,7 +900,9 @@ hidden_size = 256
 encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_layers=1).to(device)
 decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size).to(device)
 
-trainIters(encoder1, decoder1, 7500, print_every=500)
+num_epochs = 1
+for i in num_epochs:
+    trainIters(encoder1, decoder1, print_every=10)
 
 ######################################################################
 #
