@@ -637,7 +637,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
     decoder_hiddens = encoder_hiddens
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
-    use_teacher_forcing = False
+    use_teacher_forcing = True
 
     if use_teacher_forcing:
 
@@ -645,18 +645,20 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
             # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
             # the new input sequence as a continuation of the previous sequence
 
-            target_tensor = target_tensor[:, step_idx][target_tensor[:, step_idx] != 0]
-            target_length = target_tensor.size(0)
+            target_tensor_step = target_tensor[:, step_idx][target_tensor[:, step_idx] != 0]
+            target_length = target_tensor_step.size(0)
             decoder_hidden = decoder_hiddens[step_idx]
             # Teacher forcing: Feed the target as the next input
             for di in range(target_length):
                 decoder_output, decoder_hidden = decoder(
-                    decoder_input, decoder_hidden, mask_target)
+                    decoder_input, decoder_hidden)
                 # decoder_output, decoder_hidden, decoder_attention = decoder(
                 #     decoder_input, decoder_hidden, encoder_outputs)
 
-                loss += criterion(decoder_output, target_tensor[di].view(1))
-                decoder_input = target_tensor[di].view(1)  # Teacher forcing
+                loss += criterion(decoder_output, target_tensor_step[di].view(1))
+                decoder_input = target_tensor_step[di]  # Teacher forcing
+
+        loss = loss / args.batch_size
 
     else:
         for step_idx in range(args.batch_size):
