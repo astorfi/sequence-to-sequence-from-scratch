@@ -1,88 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Translation with a Sequence to Sequence Network and Attention
-*************************************************************
-**Author**: `Sean Robertson <https://github.com/spro/practical-pytorch>`_
-
-In this project we will be teaching a neural network to translate from
-French to English.
-
-::
-
-    [KEY: > input, = target, < output]
-
-    > il est en train de peindre un tableau .
-    = he is painting a picture .
-    < he is painting a picture .
-
-    > pourquoi ne pas essayer ce vin delicieux ?
-    = why not try that delicious wine ?
-    < why not try that delicious wine ?
-
-    > elle n est pas poete mais romanciere .
-    = she is not a poet but a novelist .
-    < she not not a poet but a novelist .
-
-    > vous etes trop maigre .
-    = you re too skinny .
-    < you re all alone .
-
-... to varying degrees of success.
-
-This is made possible by the simple but powerful idea of the `sequence
-to sequence network <http://arxiv.org/abs/1409.3215>`__, in which two
-recurrent neural networks work together to transform one sequence to
-another. An encoder network condenses an input sequence into a vector,
-and a decoder network unfolds that vector into a new sequence.
-
-.. figure:: /_static/img/seq-seq-images/seq2seq.png
-   :alt:
-
-To improve upon this model we'll use an `attention
-mechanism <https://arxiv.org/abs/1409.0473>`__, which lets the decoder
-learn to focus over a specific range of the input sequence.
-
-**Recommended Reading:**
-
-I assume you have at least installed PyTorch, know Python, and
-understand Tensors:
-
--  http://pytorch.org/ For installation instructions
--  :doc:`/beginner/deep_learning_60min_blitz` to get started with PyTorch in general
--  :doc:`/beginner/pytorch_with_examples` for a wide and deep overview
--  :doc:`/beginner/former_torchies_tutorial` if you are former Lua Torch user
-
-
-It would also be useful to know about Sequence to Sequence networks and
-how they work:
-
--  `Learning Phrase Representations using RNN Encoder-Decoder for
-   Statistical Machine Translation <http://arxiv.org/abs/1406.1078>`__
--  `Sequence to Sequence Learning with Neural
-   Networks <http://arxiv.org/abs/1409.3215>`__
--  `Neural Machine Translation by Jointly Learning to Align and
-   Translate <https://arxiv.org/abs/1409.0473>`__
--  `A Neural Conversational Model <http://arxiv.org/abs/1506.05869>`__
-
-You will also find the previous tutorials on
-:doc:`/intermediate/char_rnn_classification_tutorial`
-and :doc:`/intermediate/char_rnn_generation_tutorial`
-helpful as those concepts are very similar to the Encoder and Decoder
-models, respectively.
-
-And for more, read the papers that introduced these topics:
-
--  `Learning Phrase Representations using RNN Encoder-Decoder for
-   Statistical Machine Translation <http://arxiv.org/abs/1406.1078>`__
--  `Sequence to Sequence Learning with Neural
-   Networks <http://arxiv.org/abs/1409.3215>`__
--  `Neural Machine Translation by Jointly Learning to Align and
-   Translate <https://arxiv.org/abs/1409.0473>`__
--  `A Neural Conversational Model <http://arxiv.org/abs/1506.05869>`__
-
-
-**Requirements**
-"""
 from __future__ import unicode_literals, print_function, division
 from io import open
 import unicodedata
@@ -99,6 +14,10 @@ import torch.nn.functional as F
 from data_loader import Dataset
 from _utils import transformer
 import argparse
+
+# Predefined tokens
+SOS_token = 1   # SOS_token: start of sentence
+EOS_token = 2   # EOS_token: end of sentence
 
 # Useful function for arguments.
 def str2bool(v):
@@ -140,213 +59,31 @@ parser.add_argument('--MAX_LENGTH', default=10, type=int, help='Maximum length o
 # Add all arguments to parser
 args = parser.parse_args()
 
+##############
+# Cuda Flags #
+##############
 if args.cuda:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 else:
     device = torch.device("cpu")
 
-
-SOS_token = 1
-EOS_token = 2
-
-######################################################################
-# Loading data files
-# ==================
-#
-# The data for this project is a set of many thousands of English to
-# French translation pairs.
-#
-# `This question on Open Data Stack
-# Exchange <http://opendata.stackexchange.com/questions/3888/dataset-of-sentences-translated-into-many-languages>`__
-# pointed me to the open translation site http://tatoeba.org/ which has
-# downloads available at http://tatoeba.org/eng/downloads - and better
-# yet, someone did the extra work of splitting language pairs into
-# individual text files here: http://www.manythings.org/anki/
-#
-# The English to French pairs are too big to include in the repo, so
-# download to ``data/eng-fra.txt`` before continuing. The file is a tab
-# separated list of translation pairs:
-#
-# ::
-#
-#     I am cold.    J'ai froid.
-#
-# .. Note::
-#    Download the data from
-#    `here <https://download.pytorch.org/tutorial/data.zip>`_
-#    and extract it to the current directory.
-
-######################################################################
-# Similar to the character encoding used in the character-level RNN
-# tutorials, we will be representing each word in a language as a one-hot
-# vector, or giant vector of zeros except for a single one (at the index
-# of the word). Compared to the dozens of characters that might exist in a
-# language, there are many many more words, so the encoding vector is much
-# larger. We will however cheat a bit and trim the data to only use a few
-# thousand words per language.
-#
-# .. figure:: /_static/img/seq-seq-images/word-encoding.png
-#    :alt:
-#
-#
-
-
-######################################################################
-# We'll need a unique index per word to use as the inputs and targets of
-# the networks later. To keep track of all this we will use a helper class
-# called ``Lang`` which has word → index (``word2index``) and index → word
-# (``index2word``) dictionaries, as well as a count of each word
-# ``word2count`` to use to later replace rare words.
-#
-
-
-#
-#
-# class Lang:
-#     def __init__(self, name):
-#         self.name = name
-#         self.word2index = {}
-#         self.word2count = {}
-#         self.index2word = {0: "SOS", 1: "EOS"}
-#         self.n_words = 2  # Count SOS and EOS
-#
-#     def addSentence(self, sentence):
-#         for word in sentence.split(' '):
-#             self.addWord(word)
-#
-#     def addWord(self, word):
-#         if word not in self.word2index:
-#             self.word2index[word] = self.n_words
-#             self.word2count[word] = 1
-#             self.index2word[self.n_words] = word
-#             self.n_words += 1
-#         else:
-#             self.word2count[word] += 1
-#
-#
-# ######################################################################
-# # The files are all in Unicode, to simplify we will turn Unicode
-# # characters to ASCII, make everything lowercase, and trim most
-# # punctuation.
-# #
-#
-# # Turn a Unicode string to plain ASCII, thanks to
-# # http://stackoverflow.com/a/518232/2809427
-# def unicodeToAscii(s):
-#     return ''.join(
-#         c for c in unicodedata.normalize('NFD', s)
-#         if unicodedata.category(c) != 'Mn'
-#     )
-#
-# # Lowercase, trim, and remove non-letter characters
-#
-#
-# def normalizeString(s):
-#     s = unicodeToAscii(s.lower().strip())
-#     s = re.sub(r"([.!?])", r" \1", s)
-#     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
-#     return s
-#
-#
-# ######################################################################
-# # To read the data file we will split the file into lines, and then split
-# # lines into pairs. The files are all English → Other Language, so if we
-# # want to translate from Other Language → English I added the ``reverse``
-# # flag to reverse the pairs.
-# #
-#
-# def readLangs(lang1, lang2, reverse=False):
-#     print("Reading lines...")
-#
-#     # Read the file and split into lines
-#     lines = open('data/%s-%s.txt' % (lang1, lang2), encoding='utf-8').\
-#         read().strip().split('\n')
-#
-#     # Split every line into pairs and normalize
-#     pairs = [[normalizeString(s) for s in l.split('\t')] for l in lines]
-#
-#     if args.auto_encoder:
-#         pairs = [[pair[0],pair[1]] for pair in pairs]
-#
-#     # Reverse pairs, make Lang instances
-#     if reverse:
-#         pairs = [list(reversed(p)) for p in pairs]
-#         input_lang = Lang(lang2)
-#         output_lang = Lang(lang1)
-#     else:
-#         input_lang = Lang(lang1)
-#         output_lang = Lang(lang2)
-#
-#     return input_lang, output_lang, pairs
-#
-#
-# ######################################################################
-# # Since there are a *lot* of example sentences and we want to train
-# # something quickly, we'll trim the data set to only relatively short and
-# # simple sentences. Here the maximum length is 10 words (that includes
-# # ending punctuation) and we're filtering to sentences that translate to
-# # the form "I am" or "He is" etc. (accounting for apostrophes replaced
-# # earlier).
-# #
-#
-# MAX_LENGTH = 10
-#
-# eng_prefixes = (
-#     "i am ", "i m ",
-#     "he is", "he s ",
-#     "she is", "she s",
-#     "you are", "you re ",
-#     "we are", "we re ",
-#     "they are", "they re "
-# )
-#
-#
-# def filterPair(p):
-#     return len(p[0].split(' ')) < MAX_LENGTH and \
-#         len(p[1].split(' ')) < MAX_LENGTH and \
-#         p[1].startswith(eng_prefixes)
-#
-#
-# def filterPairs(pairs):
-#     return [pair for pair in pairs if filterPair(pair)]
-#
-#
-# ######################################################################
-# # The full process for preparing the data is:
-# #
-# # -  Read text file and split into lines, split lines into pairs
-# # -  Normalize text, filter by length and content
-# # -  Make word lists from sentences in pairs
-# #
-#
-# def prepareData(lang1, lang2, reverse=False):
-#     input_lang, output_lang, pairs = readLangs(lang1, lang2, reverse)
-#     print("Read %s sentence pairs" % len(pairs))
-#     pairs = filterPairs(pairs)
-#     print("Trimmed to %s sentence pairs" % len(pairs))
-#     print("Counting words...")
-#     for pair in pairs:
-#         input_lang.addSentence(pair[0])
-#         output_lang.addSentence(pair[1])
-#     print("Counted words:")
-#     print(input_lang.name, input_lang.n_words)
-#     print(output_lang.name, output_lang.n_words)
-#     return input_lang, output_lang, pairs
-
-
-
-
+###############################
+# Creating the dataset object #
+###############################
 # Create training data object
-lang_in = 'eng'
-lang_out = 'fra'
-trainset = Dataset(phase='train', lang_in=lang_in, lang_out=lang_out, max_input_length=10)
+trainset = Dataset(phase='train', max_input_length=10)
+
+# Extract the languages' attributes
 input_lang, output_lang = trainset.langs()
+
+# The trainloader for parallel processing
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size,
                                           shuffle=True, num_workers=args.num_workers, pin_memory=False, drop_last=True)
+# iterate through training
 dataiter = iter(trainloader)
 
-# Test
-testset = Dataset(phase='test', lang_in=lang_in, lang_out=lang_out, max_input_length=10)
+# Create testing data object
+testset = Dataset(phase='test', max_input_length=10)
 testloader = torch.utils.data.DataLoader(testset, batch_size=1,
                                           shuffle=True, num_workers=1, pin_memory=False, drop_last=True)
 
@@ -401,27 +138,43 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=1,
 #
 
 class EncoderRNN(nn.Module):
+    """
+    The encoder generates a single output vector that embodies the input seqence meaning.
+    The general procedure is as follows:
+        1. In each step, a word will be fed to a network and it generates
+         an output and a hidden state.
+        2. For the next step, the hidden step and the next word will
+         be fed to the same network (W) for updating the weights.
+        3. In the end, the last output will be the representative of the input sentence (called the "context vector").
+    """
     def __init__(self, input_size, hidden_size, batch_size, num_layers=1):
+        """
+        * For nn.LSTM, same input_size & hidden_size is chosen.
+        :param input_size: The size of the input vocabulary
+        :param hidden_size: The hidden size of the RNN.
+        :param batch_size: The batch0size for mini-batch optimization.
+        :param num_layers: Number of RNN layers. Default: 1
+        """
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
-        # self.gru = nn.GRU(hidden_size, hidden_size)
         self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size)
         self.batch_size = batch_size
         self.num_layers = num_layers
 
     def forward(self, input, hidden):
-        # The argument input.size(0) is the batch size
-        try:
-            embedded = self.embedding(input).view(1, 1, -1)
-        except:
-            print(1)
+        # Make the data in the correct format as the RNN input.
+        embedded = self.embedding(input).view(1, 1, -1)
         rnn_input = embedded
         output, hidden = self.lstm(rnn_input, hidden)
         return output, hidden
 
     def initHidden(self):
-        return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device) , torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+        """
+        The spesific type of the hidden layer for the RNN type that is used (LSTM).
+        :return: All zero hidden state.
+        """
+        return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device), torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
 
 ######################################################################
 # The Decoder
@@ -637,7 +390,6 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
     decoder_hiddens = encoder_hiddens
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
-    use_teacher_forcing = True
 
     if use_teacher_forcing:
 

@@ -195,7 +195,7 @@ def prepareData(lang1, lang2, max_input_length, reverse=False):
 class Dataset():
     """Face Landmarks dataset."""
 
-    def __init__(self, phase, lang_in='eng', lang_out='fra', num_embeddings=None, max_input_length=None, transform=None):
+    def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None):
         """
         Args:
             split (string): Here we define the split. The choices are: 'trnid', 'tstid' and 'valid' based on flower dataset.
@@ -205,7 +205,8 @@ class Dataset():
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-
+        lang_in = 'eng'
+        lang_out = 'fra'
         # Skip and eliminate the sentences with a length larger than max_input_length!
         input_lang, output_lang, pairs = prepareData(lang_in, lang_out, max_input_length, True)
         print(random.choice(pairs))
