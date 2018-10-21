@@ -151,7 +151,7 @@ class DecoderRNN(nn.Module):
 
     def forward(self, input, hidden):
         output = self.embedding(input).view(1, 1, -1)
-        output = F.relu(output)
+        # output = F.relu(output)
         output, hidden = self.lstm(output, hidden)
         output = self.out(output[0])
         return output, hidden
