@@ -56,7 +56,7 @@ parser.add_argument('--batch_per_log', default=10, type=int, help='Print the log
 
 parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
 parser.add_argument('--MAX_LENGTH', default=10, type=int, help='Maximum length of sentence')
-parser.add_argument('--bidirectional', default=True, type=str2bool, help='bidirectional LSRM')
+parser.add_argument('--bidirectional', default=False, type=str2bool, help='bidirectional LSRM')
 parser.add_argument('--hidden_size_decoder', default=256, type=int, help='Decoder Hidden Size')
 parser.add_argument('--hidden_size_encoder', default=256, type=int, help='Eecoder Hidden Size')
 
@@ -253,15 +253,17 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
             hn_backward, cn_backward = encoder_hidden_forward
 
             # Concatenate the hidden and cell states for forward and backward paths.
-            encoder_cn = torch.cat((cn_forward, cn_backward), 2)
             encoder_hn = torch.cat((hn_forward, hn_backward), 2)
+            encoder_cn = torch.cat((cn_forward, cn_backward), 2)
+
 
             # only return the hidden and cell states for the last layer and pass it to the decoder
+            encoder_hn_last_layer = encoder_hn[-1].view(1, 1, -1)
             encoder_cn_last_layer = encoder_cn[-1].view(1,1,-1)
-            encoder_hn_last_layer = encoder_hn[-1].view(1,1,-1)
+
 
             # Linear projection
-            encoder_hidden = [bridge(encoder_cn_last_layer), bridge(encoder_hn_last_layer)]
+            encoder_hidden = [bridge(encoder_hn_last_layer), bridge(encoder_cn_last_layer)]
 
 
         else:
@@ -270,7 +272,12 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
                 encoder_output, encoder_hidden = encoder(
                     input_tensor_step[ei], encoder_hidden)
                 encoder_outputs[step_idx, ei, :] = encoder_output[0, 0]
-            encoder_hidden = [encoder_hidden[0], encoder_hidden[1]]
+
+            # only return the hidden and cell states for the last layer and pass it to the decoder
+            hn, cn = encoder_hidden
+            encoder_hn_last_layer = hn[-1].view(1,1,-1)
+            encoder_cn_last_layer = cn[-1].view(1,1,-1)
+            encoder_hidden = [bridge(encoder_hn_last_layer), bridge(encoder_cn_last_layer)]
 
         encoder_hiddens_last.append(encoder_hidden)
 
@@ -278,7 +285,6 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
     decoder_hiddens = encoder_hiddens_last
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
-    use_teacher_forcing = False
 
     if use_teacher_forcing:
 
@@ -390,7 +396,7 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
 
-    num_epochs = 1
+    num_epochs = 5
     n_iters_per_epoch = int(len(trainset) / args.batch_size)
     for i in range(num_epochs):
 
@@ -426,8 +432,6 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
                 plot_loss_avg = plot_loss_total / plot_every
                 plot_losses.append(plot_loss_avg)
                 plot_loss_total = 0
-
-            break
 
             # break
         print('####### Finished epoch %d of %d ########' % (i+1, num_epochs))
@@ -474,7 +478,6 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
 
         input_length = input_tensor.size(0)
         encoder_hidden = encoder.initHidden()
-        # encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
 
         if args.bidirectional:
             encoder_hidden_forward = encoder_hidden['forward']
@@ -503,13 +506,10 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
 
 
         else:
-            encoder_outputs = torch.zeros(args.batch_size, max_length, encoder.hidden_size, device=device)
             for ei in range(input_length):
                 encoder_output, encoder_hidden = encoder(
                     input_tensor[ei], encoder_hidden)
-                encoder_hidden_last = [bridge(encoder_hidden[0]), bridge(encoder_hidden[1])]
-
-
+            encoder_hidden_last = [bridge(encoder_hidden[0]), bridge(encoder_hidden[1])]
 
         decoder_input = torch.tensor([[SOS_token]], device=device)  # SOS
         decoder_hidden = encoder_hidden_last
