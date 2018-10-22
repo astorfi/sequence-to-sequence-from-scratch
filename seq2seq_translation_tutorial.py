@@ -102,7 +102,7 @@ class EncoderRNN(nn.Module):
          be fed to the same network (W) for updating the weights.
         3. In the end, the last output will be the representative of the input sentence (called the "context vector").
     """
-    def __init__(self, input_size, hidden_size, batch_size, num_layers=1, num_directions=1):
+    def __init__(self, input_size, hidden_size, batch_size, num_layers=1, bidirectional=1):
         """
         * For nn.LSTM, same input_size & hidden_size is chosen.
         :param input_size: The size of the input vocabulary
@@ -111,12 +111,13 @@ class EncoderRNN(nn.Module):
         :param num_layers: Number of RNN layers. Default: 1
         """
         super(EncoderRNN, self).__init__()
-        self.hidden_size = hidden_size
-        self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
-        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size)
         self.batch_size = batch_size
         self.num_layers = num_layers
-        self.num_directions = num_directions
+        self.bidirectional = bidirectional
+        self.hidden_size = hidden_size
+        self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
+        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=self.num_layers)
+
 
     def forward(self, input, hidden):
         # Make the data in the correct format as the RNN input.
@@ -134,7 +135,8 @@ class EncoderRNN(nn.Module):
         The spesific type of the hidden layer for the RNN type that is used (LSTM).
         :return: All zero hidden state.
         """
-        return [torch.zeros(self.num_layers * self.num_directions, 1, self.hidden_size, device=device), torch.zeros(self.num_layers * self.num_directions, 1, self.hidden_size, device=device)]
+        num_directions = int(self.bidirectional) + 1
+        return [torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device), torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device)]
 
 class DecoderRNN(nn.Module):
     """
@@ -147,15 +149,16 @@ class DecoderRNN(nn.Module):
     2. The first output, shout be the first sentence of the output and so on.
     3. The input token sequence ends with <EOS> token.
     """
-    def __init__(self, hidden_size, output_size, batch_size, num_layers=1, num_directions=1):
+    def __init__(self, hidden_size, output_size, batch_size, num_layers=1, bidirectional=False):
         super(DecoderRNN, self).__init__()
-        self.hidden_size = hidden_size
-        self.embedding = nn.Embedding(output_size, hidden_size)
-        self.lstm = nn.LSTM(hidden_size, hidden_size)
-        self.out = nn.Linear(hidden_size, output_size)
         self.batch_size = batch_size
         self.num_layers = num_layers
-        self.num_directions = num_directions
+        self.bidirectional = bidirectional
+        self.hidden_size = hidden_size
+        self.embedding = nn.Embedding(output_size, hidden_size)
+        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=self.num_layers)
+        self.out = nn.Linear(hidden_size, output_size)
+
 
     def forward(self, input, hidden):
         output = self.embedding(input).view(1, 1, -1)
@@ -164,7 +167,8 @@ class DecoderRNN(nn.Module):
         return output, (h_n, c_n)
 
     def initHidden(self):
-        return [torch.zeros(self.num_layers * self.num_directions, 1, self.hidden_size, device=device), torch.zeros(self.num_layers * self.num_directions, 1, self.hidden_size, device=device)]
+        num_directions = int(self.bidirectional) + 1
+        return [torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device), torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device)]
 
 ######################
 # Training the Model #
@@ -490,8 +494,8 @@ def evaluateRandomly(encoder, decoder, n=10):
 #
 
 hidden_size = 256
-encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_layers=1).to(device)
-decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size, num_layers=1).to(device)
+encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_layers=3, bidirectional=False).to(device)
+decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size, num_layers=3, bidirectional=False).to(device)
 
 trainIters(encoder1, decoder1, print_every=10)
 
