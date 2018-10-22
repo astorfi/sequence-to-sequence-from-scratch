@@ -56,6 +56,7 @@ parser.add_argument('--batch_per_log', default=10, type=int, help='Print the log
 
 parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
 parser.add_argument('--MAX_LENGTH', default=10, type=int, help='Maximum length of sentence')
+parser.add_argument('--bidirectional', default=False, type=str2bool, help='bidirectional LSRM')
 
 # Add all arguments to parser
 args = parser.parse_args()
@@ -131,12 +132,16 @@ class EncoderRNN(nn.Module):
         return output, (h_n, c_n)
 
     def initHidden(self):
-        """
-        The spesific type of the hidden layer for the RNN type that is used (LSTM).
-        :return: All zero hidden state.
-        """
-        num_directions = int(self.bidirectional) + 1
-        return [torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device), torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device)]
+
+        if self.bidirectional:
+            encoder_hidden = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+                                      torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+            encoder_hidden = {"forward": encoder_hidden, "backward": encoder_hidden}
+            return encoder_hidden
+        else:
+            encoder_hidden = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+                              torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+            return encoder_hidden
 
 class DecoderRNN(nn.Module):
     """
@@ -156,7 +161,8 @@ class DecoderRNN(nn.Module):
         self.bidirectional = bidirectional
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(output_size, hidden_size)
-        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=self.num_layers)
+        # self.lstm = nn.LSTM(input_size= hidden_size, hidden_size=hidden_size, num_layers=(int(self.bidirectional) + 1) * self.num_layers)
+        self.lstm = nn.LSTM(input_size= hidden_size, hidden_size=hidden_size, num_layers=1)
         self.out = nn.Linear(hidden_size, output_size)
 
 
@@ -167,8 +173,14 @@ class DecoderRNN(nn.Module):
         return output, (h_n, c_n)
 
     def initHidden(self):
+        """
+        The spesific type of the hidden layer for the RNN type that is used (LSTM).
+        :return: All zero hidden state.
+        """
         num_directions = int(self.bidirectional) + 1
-        return [torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device), torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device)]
+        return [torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device),
+                torch.zeros(self.num_layers * num_directions, 1, self.hidden_size, device=device)]
+
 
 ######################
 # Training the Model #
@@ -204,8 +216,8 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
 
-    encoder_outputs = torch.zeros(args.batch_size, max_length, encoder.hidden_size, device=device)
-    encoder_hiddens = []
+
+    encoder_hiddens_last = []
     loss = 0
 
     for step_idx in range(args.batch_size):
@@ -214,14 +226,35 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
         encoder_hidden = encoder.initHidden()
         input_tensor_step = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
         input_length = input_tensor_step.size(0)
-        for ei in range(input_length):
-            encoder_output, encoder_hidden = encoder(
-                input_tensor_step[ei], encoder_hidden)
-            encoder_outputs[step_idx, ei, :] = encoder_output[0, 0]
-        encoder_hiddens.append(encoder_hidden)
+
+        if args.bidirectional:
+            encoder_outputs = torch.zeros(args.batch_size, max_length, 2 * encoder.hidden_size, device=device)
+            encoder_hidden_forward = encoder_hidden['forward']
+            encoder_hidden_backward = encoder_hidden['backward']
+            for ei in range(input_length):
+                encoder_output, encoder_hidden_forward = encoder(
+                    input_tensor_step[ei], encoder_hidden_forward)
+                encoder_outputs[step_idx, ei, 0:encoder.hidden_size] = encoder_output[0, 0]
+            for ei in range(input_length):
+                encoder_output, encoder_hidden_backward = encoder(
+                    input_tensor_step[input_length - 1 - ei], encoder_hidden_backward)
+                encoder_outputs[step_idx, ei, encoder.hidden_size:] = encoder_output[0, 0]
+            encoder_cn = torch.cat((encoder_hidden_forward[0], encoder_hidden_backward[0]), 0)
+            encoder_hn = torch.cat((encoder_hidden_forward[1], encoder_hidden_backward[1]), 0)
+            encoder_hidden = [encoder_cn, encoder_hn]
+
+
+        else:
+            encoder_outputs = torch.zeros(args.batch_size, max_length, encoder.hidden_size, device=device)
+            for ei in range(input_length):
+                encoder_output, encoder_hidden = encoder(
+                    input_tensor_step[ei], encoder_hidden)
+                encoder_outputs[step_idx, ei, :] = encoder_output[0, 0]
+
+        encoder_hiddens_last.append([encoder_output, encoder_output])
 
     decoder_input = torch.tensor([[SOS_token]], device=device)
-    decoder_hiddens = encoder_hiddens
+    decoder_hiddens = encoder_hiddens_last
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
 
@@ -494,8 +527,8 @@ def evaluateRandomly(encoder, decoder, n=10):
 #
 
 hidden_size = 256
-encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_layers=3, bidirectional=False).to(device)
-decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size, num_layers=3, bidirectional=False).to(device)
+encoder1 = EncoderRNN(input_lang.n_words, hidden_size, args.batch_size, num_layers=3, bidirectional=args.bidirectional).to(device)
+decoder1 = DecoderRNN(hidden_size, output_lang.n_words, args.batch_size, num_layers=3, bidirectional=args.bidirectional).to(device)
 
 trainIters(encoder1, decoder1, print_every=10)
 
