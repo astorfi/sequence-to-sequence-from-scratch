@@ -396,7 +396,7 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
     decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
 
-    num_epochs = 5
+    num_epochs = 10
     n_iters_per_epoch = int(len(trainset) / args.batch_size)
     for i in range(num_epochs):
 
@@ -509,7 +509,12 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
             for ei in range(input_length):
                 encoder_output, encoder_hidden = encoder(
                     input_tensor[ei], encoder_hidden)
-            encoder_hidden_last = [bridge(encoder_hidden[0]), bridge(encoder_hidden[1])]
+
+            # only return the hidden and cell states for the last layer and pass it to the decoder
+            hn, cn = encoder_hidden
+            encoder_hn_last_layer = hn[-1].view(1, 1, -1)
+            encoder_cn_last_layer = cn[-1].view(1, 1, -1)
+            encoder_hidden_last = [bridge(encoder_hn_last_layer), bridge(encoder_cn_last_layer)]
 
         decoder_input = torch.tensor([[SOS_token]], device=device)  # SOS
         decoder_hidden = encoder_hidden_last
@@ -579,7 +584,6 @@ def evaluateRandomly(encoder, decoder, bridge, n=10):
 #    encoder and decoder are initialized and run ``trainIters`` again.
 #
 
-hidden_size = 256
 encoder1 = EncoderRNN(input_lang.n_words, args.hidden_size_encoder, args.batch_size, num_layers=3, bidirectional=args.bidirectional).to(device)
 bridge = Bridge(args.hidden_size_encoder, args.hidden_size_decoder, args.bidirectional).to(device)
 decoder1 = DecoderRNN(args.hidden_size_decoder, output_lang.n_words, args.batch_size, num_layers=1).to(device)
