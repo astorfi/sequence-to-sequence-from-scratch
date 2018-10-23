@@ -56,7 +56,7 @@ parser.add_argument('--batch_per_log', default=10, type=int, help='Print the log
 
 parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
 parser.add_argument('--MAX_LENGTH', default=10, type=int, help='Maximum length of sentence')
-parser.add_argument('--bidirectional', default=False, type=str2bool, help='bidirectional LSRM')
+parser.add_argument('--bidirectional', default=True, type=str2bool, help='bidirectional LSRM')
 parser.add_argument('--hidden_size_decoder', default=256, type=int, help='Decoder Hidden Size')
 parser.add_argument('--hidden_size_encoder', default=256, type=int, help='Eecoder Hidden Size')
 
@@ -119,7 +119,7 @@ class EncoderRNN(nn.Module):
         self.bidirectional = bidirectional
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
-        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=self.num_layers)
+        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
 
 
     def forward(self, input, hidden):
@@ -180,16 +180,6 @@ class DecoderRNN(nn.Module):
         return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
                 torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
 
-class Bridge(nn.Module):
-    def __init__(self, hidden_size_encoder, hidden_size_decoder, bidirectional):
-        super(Bridge, self).__init__()
-        num_directions = (int(args.bidirectional) + 1)
-        self.linear_op = nn.Linear(num_directions * hidden_size_encoder, hidden_size_decoder)
-
-    def forward(self, input):
-        return self.linear_op(input)
-
-
 ######################
 # Training the Model #
 ######################
@@ -219,7 +209,7 @@ class Bridge(nn.Module):
 
 teacher_forcing_ratio = 0.5
 
-def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder, bridge, encoder_optimizer, decoder_optimizer, criterion, max_length=args.MAX_LENGTH):
+def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length=args.MAX_LENGTH):
 
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
@@ -261,9 +251,8 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
             encoder_hn_last_layer = encoder_hn[-1].view(1, 1, -1)
             encoder_cn_last_layer = encoder_cn[-1].view(1,1,-1)
 
-
             # Linear projection
-            encoder_hidden = [bridge(encoder_hn_last_layer), bridge(encoder_cn_last_layer)]
+            encoder_hidden = [encoder_hn_last_layer, encoder_cn_last_layer]
 
 
         else:
@@ -277,7 +266,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
             hn, cn = encoder_hidden
             encoder_hn_last_layer = hn[-1].view(1,1,-1)
             encoder_cn_last_layer = cn[-1].view(1,1,-1)
-            encoder_hidden = [bridge(encoder_hn_last_layer), bridge(encoder_cn_last_layer)]
+            encoder_hidden = [encoder_hn_last_layer, encoder_cn_last_layer]
 
         encoder_hiddens_last.append(encoder_hidden)
 
@@ -385,7 +374,7 @@ def reformat_tensor_mask(tensor):
 
 
 
-def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learning_rate=0.1):
+def trainIters(encoder, decoder, print_every=1000, plot_every=100, learning_rate=0.1):
 
     start = time.time()
     plot_losses = []
@@ -418,7 +407,7 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
                 target_tensor = target_tensor.cuda()
 
             loss = train(input_tensor, target_tensor, mask_input, mask_target, encoder,
-                         decoder, bridge, encoder_optimizer, decoder_optimizer, criterion)
+                         decoder, encoder_optimizer, decoder_optimizer, criterion)
             print_loss_total += loss
             plot_loss_total += loss
 
@@ -473,7 +462,7 @@ def showPlot(points):
 # attention outputs for display later.
 #
 
-def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH):
+def evaluate(encoder, decoder, input_tensor, max_length=args.MAX_LENGTH):
     with torch.no_grad():
 
         input_length = input_tensor.size(0)
@@ -501,9 +490,8 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
             encoder_cn_last_layer = encoder_cn[-1].view(1,1,-1)
             encoder_hn_last_layer = encoder_hn[-1].view(1,1,-1)
 
-            # Linear projection
-            encoder_hidden_last = [bridge(encoder_cn_last_layer), bridge(encoder_hn_last_layer)]
-
+            # Last layer
+            encoder_hidden_last = [encoder_cn_last_layer, encoder_hn_last_layer]
 
         else:
             for ei in range(input_length):
@@ -512,9 +500,9 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
 
             # only return the hidden and cell states for the last layer and pass it to the decoder
             hn, cn = encoder_hidden
-            encoder_hn_last_layer = hn[-1].view(1, 1, -1)
-            encoder_cn_last_layer = cn[-1].view(1, 1, -1)
-            encoder_hidden_last = [bridge(encoder_hn_last_layer), bridge(encoder_cn_last_layer)]
+            encoder_hn_last_layer = hn[-1].view(1,1,-1)
+            encoder_cn_last_layer = cn[-1].view(1,1,-1)
+            encoder_hidden_last = [encoder_hn_last_layer, encoder_cn_last_layer]
 
         decoder_input = torch.tensor([[SOS_token]], device=device)  # SOS
         decoder_hidden = encoder_hidden_last
@@ -544,7 +532,7 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
 # input, target, and output to make some subjective quality judgements:
 #
 
-def evaluateRandomly(encoder, decoder, bridge, n=10):
+def evaluateRandomly(encoder, decoder, n=10):
     for i in range(n):
         pair = testset[i]['sentence']
         input_tensor, mask_input = reformat_tensor_mask(pair[:,0,:].view(1,1,-1))
@@ -559,7 +547,7 @@ def evaluateRandomly(encoder, decoder, bridge, n=10):
         output_sentence = ' '.join(transformer.SentenceFromTensor_(output_lang, output_tensor))
         print('Input: ', input_sentence)
         print('Output: ', output_sentence)
-        output_words = evaluate(encoder, decoder, bridge, input_tensor)
+        output_words = evaluate(encoder, decoder, input_tensor)
         output_sentence = ' '.join(output_words)
         print('Predicted Output: ', output_sentence)
         print('')
@@ -584,16 +572,16 @@ def evaluateRandomly(encoder, decoder, bridge, n=10):
 #    encoder and decoder are initialized and run ``trainIters`` again.
 #
 
-encoder1 = EncoderRNN(input_lang.n_words, args.hidden_size_encoder, args.batch_size, num_layers=3, bidirectional=args.bidirectional).to(device)
-bridge = Bridge(args.hidden_size_encoder, args.hidden_size_decoder, args.bidirectional).to(device)
-decoder1 = DecoderRNN(args.hidden_size_decoder, output_lang.n_words, args.batch_size, num_layers=1).to(device)
+num_directions = int(args.bidirectional) + 1
+encoder1 = EncoderRNN(input_lang.n_words, args.hidden_size_encoder, args.batch_size, num_layers=1, bidirectional=args.bidirectional).to(device)
+decoder1 = DecoderRNN(args.hidden_size_encoder * num_directions, output_lang.n_words, args.batch_size, num_layers=1).to(device)
 
-trainIters(encoder1, decoder1, bridge, print_every=10)
+trainIters(encoder1, decoder1, print_every=10)
 
 ######################################################################
 #
 
-evaluateRandomly(encoder1, decoder1, bridge)
+evaluateRandomly(encoder1, decoder1)
 
 
 ######################################################################
