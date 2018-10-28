@@ -303,7 +303,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
         encoder_hidden = [bridge(item) for item in encoder_hidden]
         encoder_hiddens_last.append(encoder_hidden)
 
-    decoder_input = torch.tensor([[SOS_token]], device=device)
+    decoder_input = torch.tensor([SOS_token], device=device)
     decoder_hiddens = encoder_hiddens_last
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
@@ -537,7 +537,7 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
             encoder_cn_last_layer = cn[-1].view(1,1,-1)
             encoder_hidden_last = [encoder_hn_last_layer, encoder_cn_last_layer]
 
-        decoder_input = torch.tensor([[SOS_token]], device=device)  # SOS
+        decoder_input = torch.tensor([SOS_token], device=device)  # SOS
         encoder_hidden_last = [bridge(item) for item in encoder_hidden_last]
         decoder_hidden = encoder_hidden_last
 

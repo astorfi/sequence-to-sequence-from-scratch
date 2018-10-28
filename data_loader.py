@@ -90,6 +90,7 @@ def unicodeToAscii(s):
 def normalizeString(s):
     s = unicodeToAscii(s.lower().strip())
     s = re.sub(r"([.!?])", r" \1", s)
+    s = re.sub("[.!?]", '', s)
     s = re.sub(r"[^a-zA-Z.!?]+", r" ", s)
     return s
 
@@ -99,6 +100,7 @@ def normalizeString(s):
 # want to translate from Other Language → English I added the ``reverse``
 # flag to reverse the pairs.
 #
+
 
 def readLangs(lang1, lang2, reverse=False):
     print("Reading lines...")
@@ -144,13 +146,15 @@ eng_prefixes = (
     "they are", "they re "
 )
 
+
 def filterPair(p, max_input_length):
     return len(p[0].split(' ')) < max_input_length and \
            len(p[1].split(' ')) < max_input_length and \
            p[1].startswith(eng_prefixes)
 
 def filterPairs(pairs, max_input_length):
-    return [pair for pair in pairs if filterPair(pair, max_input_length)]
+    pairs = [pair for pair in pairs if filterPair(pair, max_input_length)]
+    return pairs
 
 ######################################################################
 # The full process for preparing the data is:
