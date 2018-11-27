@@ -12,7 +12,7 @@ import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
 from data_loader import Dataset
-from _utils import transformer
+from _utils.transformer import *
 import argparse
 
 
@@ -61,6 +61,7 @@ parser.add_argument('--hidden_size_decoder', default=256, type=int, help='Decode
 parser.add_argument('--num_layer_decoder', default=1, type=int, help='Number of LSTM layers for decoder')
 parser.add_argument('--hidden_size_encoder', default=256, type=int, help='Eecoder Hidden Size')
 parser.add_argument('--num_layer_encoder', default=1, type=int, help='Number of LSTM layers for encoder')
+parser.add_argument('--teacher_forcing', default=False, type=str2bool, help='If using the teacher frocing in decoder')
 
 # Add all arguments to parser
 args = parser.parse_args()
@@ -212,50 +213,27 @@ class Linear(nn.Module):
             return self.linear_connection_op(input)
 
 
-
-
 ######################
 # Training the Model #
 ######################
-#
-# To train we run the input sentence through the encoder, and keep track
-# of every output and the latest hidden state. Then the decoder is given
-# the ``<SOS>`` token as its first input, and the last hidden state of the
-# encoder as its first hidden state.
-#
-# "Teacher forcing" is the concept of using the real target outputs as
-# each next input, instead of using the decoder's guess as the next input.
-# Using teacher forcing causes it to converge faster but `when the trained
-# network is exploited, it may exhibit
-# instability <http://minds.jacobs-university.de/sites/default/files/uploads/papers/ESNTutorialRev.pdf>`__.
-#
-# You can observe outputs of teacher-forced networks that read with
-# coherent grammar but wander far from the correct translation -
-# intuitively it has learned to represent the output grammar and can "pick
-# up" the meaning once the teacher tells it the first few words, but it
-# has not properly learned how to create the sentence from the translation
-# in the first place.
-#
-# Because of the freedom PyTorch's autograd gives us, we can randomly
-# choose to use teacher forcing or not with a simple if statement. Turn
-# ``teacher_forcing_ratio`` up to use more of it.
-#
-
-num_directions = int(args.bidirectional) + 1
-
-
-teacher_forcing_ratio = 0.5
 
 def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder, bridge, encoder_optimizer, decoder_optimizer, bridge_optimizer, criterion, max_length=args.MAX_LENGTH):
+    # To train, each element of the input sentence will be fed to the encoder.
+    # At the decoding phase``<SOS>`` will be fed as the first input to the decoder
+    # and the last hidden (state,cell) of the encoder will play the role of the first hidden (cell,state) of the decoder.
 
+    # optimizer steps
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
     bridge_optimizer.zero_grad()
 
-
+    # Define a list for the last hidden layer
     encoder_hiddens_last = []
     loss = 0
 
+    #################
+    #### DECODER ####
+    #################
     for step_idx in range(args.batch_size):
         # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
         # the new input sequence as a continuation of the previous sequence.
@@ -263,6 +241,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
         input_tensor_step = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
         input_length = input_tensor_step.size(0)
 
+        # Switch to bidirectional mode
         if args.bidirectional:
             encoder_outputs = torch.zeros(args.batch_size, max_length, 2 * encoder.hidden_size, device=device)
             encoder_hidden_forward = encoder_hidden['forward']
@@ -306,15 +285,19 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
             encoder_cn_last_layer = cn[-1].view(1,1,-1)
             encoder_hidden = [encoder_hn_last_layer, encoder_cn_last_layer]
 
+        # A linear layer to establish the connection between the encoder/decoder layers.
         encoder_hidden = [bridge(item) for item in encoder_hidden]
         encoder_hiddens_last.append(encoder_hidden)
 
+    #################
+    #### DECODER ####
+    #################
     decoder_input = torch.tensor([SOS_token], device=device)
     decoder_hiddens = encoder_hiddens_last
 
-    use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
-
-    if use_teacher_forcing:
+    # teacher_forcing uses the real target outputs as the next input
+    # rather than using the decoder's prediction.
+    if args.teacher_forcing:
 
         for step_idx in range(args.batch_size):
             # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
@@ -389,28 +372,6 @@ def timeSince(since, percent):
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 
-######################################################################
-# The whole training process looks like this:
-#
-# -  Start a timer
-# -  Initialize optimizers and criterion
-# -  Create set of training pairs
-# -  Start empty losses array for plotting
-#
-# Then we call ``train`` many times and occasionally print the progress (%
-# of examples, time so far, estimated time) and average loss.
-
-def reformat_tensor_(tensor):
-    tensor = tensor.transpose(0, 2, 1)
-    tensor = tensor.squeeze()
-    return tensor[tensor != -1].view(-1, 1)
-
-def reformat_tensor_mask(tensor):
-    tensor = tensor.squeeze(dim=1)
-    tensor = tensor.transpose(1,0)
-    mask = tensor != 0
-    return tensor, mask
-
 
 
 def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learning_rate=0.1):
@@ -464,46 +425,21 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
 
         print('####### Finished epoch %d of %d ########' % (i+1, num_epochs))
 
-    showPlot(plot_losses)
 
-
-######################################################################
-# Plotting results
-# ----------------
+##############
+# Evaluation #
+##############
 #
-# Plotting is done with matplotlib, using the array of loss values
-# ``plot_losses`` saved while training.
-#
-
-import matplotlib.pyplot as plt
-plt.switch_backend('agg')
-import matplotlib.ticker as ticker
-import numpy as np
-
-
-def showPlot(points):
-    plt.figure()
-    fig, ax = plt.subplots()
-    # this locator puts ticks at regular intervals
-    loc = ticker.MultipleLocator(base=0.2)
-    ax.yaxis.set_major_locator(loc)
-    plt.plot(points)
-
-
-######################################################################
-# Evaluation
-# ==========
-#
-# Evaluation is mostly the same as training, but there are no targets so
-# we simply feed the decoder's predictions back to itself for each step.
-# Every time it predicts a word we add it to the output string, and if it
-# predicts the EOS token we stop there. We also store the decoder's
-# attention outputs for display later.
-#
+# In evaluation, we simply feed the sequence and observe the output.
+# The generation will be over once the "EOS" has been generated.
 
 def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH):
+
+    # Required for tensor matching.
+    # Remove to see the results for educational purposes.
     with torch.no_grad():
 
+        # Initialize the encoder hidden.
         input_length = input_tensor.size(0)
         encoder_hidden = encoder.initHidden()
 
@@ -568,10 +504,6 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
 
 
 ######################################################################
-# We can evaluate random sentences from the training set and print out the
-# input, target, and output to make some subjective quality judgements:
-#
-
 def evaluateRandomly(encoder, decoder, bridge, n=10):
     for i in range(n):
         pair = testset[i]['sentence']
@@ -596,114 +528,12 @@ def evaluateRandomly(encoder, decoder, bridge, n=10):
 ######################################################################
 # Training and Evaluating
 # =======================
-#
-# With all these helper functions in place (it looks like extra work, but
-# it makes it easier to run multiple experiments) we can actually
-# initialize a network and start training.
-#
-# Remember that the input sentences were heavily filtered. For this small
-# dataset we can use relatively small networks of 256 hidden nodes and a
-# single GRU layer. After about 40 minutes on a MacBook CPU we'll get some
-# reasonable results.
-#
-# .. Note::
-#    If you run this notebook you can train, interrupt the kernel,
-#    evaluate, and continue training later. Comment out the lines where the
-#    encoder and decoder are initialized and run ``trainIters`` again.
-#
 
-encoder1 = EncoderRNN(args.hidden_size_encoder, input_lang.n_words, args.batch_size, num_layers=arg.num_layer_encoder, bidirectional=args.bidirectional).to(device)
+encoder1 = EncoderRNN(args.hidden_size_encoder, input_lang.n_words, args.batch_size, num_layers=args.num_layer_encoder, bidirectional=args.bidirectional).to(device)
 bridge = Linear(args.bidirectional, args.hidden_size_encoder, args.hidden_size_decoder).to(device)
-decoder1 = DecoderRNN(args.hidden_size_decoder, output_lang.n_words, args.batch_size, num_layers=arg.num_layer_decoder).to(device)
+decoder1 = DecoderRNN(args.hidden_size_decoder, output_lang.n_words, args.batch_size, num_layers=args.num_layer_decoder).to(device)
 
 trainIters(encoder1, decoder1, bridge, print_every=10)
 
 ######################################################################
-#
-
 evaluateRandomly(encoder1, decoder1, bridge)
-
-
-######################################################################
-# Visualizing Attention
-# ---------------------
-#
-# A useful property of the attention mechanism is its highly interpretable
-# outputs. Because it is used to weight specific encoder outputs of the
-# input sequence, we can imagine looking where the network is focused most
-# at each time step.
-#
-# You could simply run ``plt.matshow(attentions)`` to see attention output
-# displayed as a matrix, with the columns being input steps and rows being
-# output steps:
-#
-
-# output_words, attentions = evaluate(
-#     encoder1, attn_decoder1, "je suis trop froid .")
-# plt.matshow(attentions.numpy())
-#
-#
-# ######################################################################
-# # For a better viewing experience we will do the extra work of adding axes
-# # and labels:
-# #
-#
-# def showAttention(input_sentence, output_words, attentions):
-#     # Set up figure with colorbar
-#     fig = plt.figure()
-#     ax = fig.add_subplot(111)
-#     cax = ax.matshow(attentions.numpy(), cmap='bone')
-#     fig.colorbar(cax)
-#
-#     # Set up axes
-#     ax.set_xticklabels([''] + input_sentence.split(' ') +
-#                        ['<EOS>'], rotation=90)
-#     ax.set_yticklabels([''] + output_words)
-#
-#     # Show label at every tick
-#     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-#     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-#
-#     plt.show()
-#
-#
-# def evaluateAndShowAttention(input_sentence):
-#     output_words, attentions = evaluate(
-#         encoder1, attn_decoder1, input_sentence)
-#     print('input =', input_sentence)
-#     print('output =', ' '.join(output_words))
-#     showAttention(input_sentence, output_words, attentions)
-#
-#
-# evaluateAndShowAttention("elle a cinq ans de moins que moi .")
-#
-# evaluateAndShowAttention("elle est trop petit .")
-#
-# evaluateAndShowAttention("je ne crains pas de mourir .")
-#
-# evaluateAndShowAttention("c est un jeune directeur plein de talent .")
-
-
-######################################################################
-# Exercises
-# =========
-#
-# -  Try with a different dataset
-#
-#    -  Another language pair
-#    -  Human → Machine (e.g. IOT commands)
-#    -  Chat → Response
-#    -  Question → Answer
-#
-# -  Replace the embeddings with pre-trained word embeddings such as word2vec or
-#    GloVe
-# -  Try with more layers, more hidden units, and more sentences. Compare
-#    the training time and results.
-# -  If you use a translation file where pairs have two of the same phrase
-#    (``I am test \t I am test``), you can use this as an autoencoder. Try
-#    this:
-#
-#    -  Train as an autoencoder
-#    -  Save only the Encoder network
-#    -  Train a new Decoder for translation from there
-#

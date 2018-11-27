@@ -19,16 +19,6 @@ from _utils.transformer import *
 def str2bool(v):
     return v.lower() in ("yes", "true")
 
-# Parser
-parser = argparse.ArgumentParser(description='Creating Classifier')
-
-###############
-# Model Flags #
-###############
-parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
-
-# Add all arguments to parser
-args = parser.parse_args()
 
 # Device parameter
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -102,7 +92,7 @@ def normalizeString(s):
 #
 
 
-def readLangs(lang1, lang2, reverse=False):
+def readLangs(lang1, lang2, auto_encoder=False, reverse=False):
     print("Reading lines...")
 
     # Read the file and split into lines
@@ -112,7 +102,7 @@ def readLangs(lang1, lang2, reverse=False):
     # Split every line into pairs and normalize
     pairs = [[normalizeString(s) for s in l.split('\t')] for l in lines]
 
-    if args.auto_encoder:
+    if auto_encoder:
         pairs = [[pair[0], pair[0]] for pair in pairs]
 
     # Reverse pairs, make Lang instances
@@ -164,8 +154,8 @@ def filterPairs(pairs, max_input_length):
 # -  Make word lists from sentences in pairs
 #
 
-def prepareData(lang1, lang2, max_input_length, reverse=False):
-    input_lang, output_lang, pairs = readLangs(lang1, lang2, reverse)
+def prepareData(lang1, lang2, max_input_length, auto_encoder=False, reverse=False):
+    input_lang, output_lang, pairs = readLangs(lang1, lang2, auto_encoder, reverse)
     print("Read %s sentence pairs" % len(pairs))
     pairs = filterPairs(pairs, max_input_length)
     print("Trimmed to %s sentence pairs" % len(pairs))
@@ -179,17 +169,6 @@ def prepareData(lang1, lang2, max_input_length, reverse=False):
     return input_lang, output_lang, pairs
 
 
-######################################################################
-# .. note:: There are other forms of attention that work around the length
-#   limitation by using a relative position approach. Read about "local
-#   attention" in `Effective Approaches to Attention-based Neural Machine
-#   Translation <https://arxiv.org/abs/1508.04025>`__.
-#
-# Training
-# ========
-#
-
-
 
 ########################
 ### Dataset Class ######
@@ -199,7 +178,7 @@ def prepareData(lang1, lang2, max_input_length, reverse=False):
 class Dataset():
     """Face Landmarks dataset."""
 
-    def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None):
+    def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None, auto_encoder=False):
         """
         Args:
             split (string): Here we define the split. The choices are: 'trnid', 'tstid' and 'valid' based on flower dataset.
@@ -212,7 +191,7 @@ class Dataset():
         lang_in = 'eng'
         lang_out = 'fra'
         # Skip and eliminate the sentences with a length larger than max_input_length!
-        input_lang, output_lang, pairs = prepareData(lang_in, lang_out, max_input_length, True)
+        input_lang, output_lang, pairs = prepareData(lang_in, lang_out, max_input_length, auto_encoder=auto_encoder, reverse=True)
         print(random.choice(pairs))
 
         # Randomize list

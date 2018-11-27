@@ -62,3 +62,15 @@ def tensorsFromPair(pair, input_lang, output_lang, max_input_length):
     pair_tensor = pad_sequence([input_tensor_padded, target_tensor_padded], batch_first=False, padding_value=0)
 
     return pair_tensor
+
+######################################################################
+def reformat_tensor_(tensor):
+    tensor = tensor.transpose(0, 2, 1)
+    tensor = tensor.squeeze()
+    return tensor[tensor != -1].view(-1, 1)
+
+def reformat_tensor_mask(tensor):
+    tensor = tensor.squeeze(dim=1)
+    tensor = tensor.transpose(1,0)
+    mask = tensor != 0
+    return tensor, mask
