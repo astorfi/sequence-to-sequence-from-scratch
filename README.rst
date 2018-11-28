@@ -58,3 +58,24 @@ The encoder, will generally be initialized as below:
 
      # The LSTM layer for the input
      self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
+
+
+**NOTE:** We ``do NOT`` generate the whole LSTM/Bi-LSTM architecture using Pytorch. Instead, we just use
+the LSTM cells to represent **what exactly is going on in the encoding/decoding** phases!
+
+The initialization of the LSTM is a little bit different compared to the LSTM. Both cell state and hidden states
+must be initialized as belows:
+
+.. code-block:: python
+
+  def initHidden(self):
+
+    if self.bidirectional:
+        encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+                                  torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+        encoder_state = {"forward": encoder_state, "backward": encoder_state}
+        return encoder_state
+    else:
+        encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+                          torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+        return encoder_state
