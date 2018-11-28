@@ -57,7 +57,7 @@ parser.add_argument('--batch_per_log', default=10, type=int, help='Print the log
 
 parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
 parser.add_argument('--MAX_LENGTH', default=10, type=int, help='Maximum length of sentence')
-parser.add_argument('--bidirectional', default=False, type=str2bool, help='bidirectional LSRM')
+parser.add_argument('--bidirectional', default=True, type=str2bool, help='bidirectional LSRM')
 parser.add_argument('--hidden_size_decoder', default=256, type=int, help='Decoder Hidden Size')
 parser.add_argument('--num_layer_decoder', default=1, type=int, help='Number of LSTM layers for decoder')
 parser.add_argument('--hidden_size_encoder', default=256, type=int, help='Eecoder Hidden Size')
@@ -447,6 +447,7 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
                 plot_losses.append(plot_loss_avg)
                 plot_loss_total = 0
 
+
         print('####### Finished epoch %d of %d ########' % (i+1, args.num_epochs))
 
 
@@ -468,29 +469,37 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
         encoder_hidden = encoder.initHidden()
 
         if args.bidirectional:
+            encoder_outputs = torch.zeros(args.batch_size, max_length, 2 * encoder.hidden_size, device=device)
             encoder_hidden_forward = encoder_hidden['forward']
             encoder_hidden_backward = encoder_hidden['backward']
+            # for ei in range(input_length):
+            #     encoder_output, encoder_hidden_forward = encoder(
+            #         input_tensor_step[ei], encoder_hidden_forward)
+            #     encoder_outputs[step_idx, ei, 0:encoder.hidden_size] = encoder_output[0, 0]
+            # for ei in range(input_length):
+            #     encoder_output, encoder_hidden_backward = encoder(
+            #         input_tensor_step[input_length - 1 - ei], encoder_hidden_backward)
+            #     encoder_outputs[step_idx, ei, encoder.hidden_size:] = encoder_output[0, 0]
+
             for ei in range(input_length):
-                encoder_output, encoder_hidden_forward = encoder(
-                    input_tensor[ei], encoder_hidden_forward)
-            for ei in range(input_length):
-                encoder_output, encoder_hidden_backward = encoder(
-                    input_tensor[input_length - 1 - ei], encoder_hidden_backward)
+                (encoder_hidden_forward, encoder_hidden_backward) = encoder(
+                    (input_tensor[ei],input_tensor[input_length - 1 - ei]), (encoder_hidden_forward,encoder_hidden_backward))
 
             # Extract the hidden and cell states
             hn_forward, cn_forward = encoder_hidden_forward
             hn_backward, cn_backward = encoder_hidden_backward
 
             # Concatenate the hidden and cell states for forward and backward paths.
-            encoder_cn = torch.cat((cn_forward, cn_backward), 2)
             encoder_hn = torch.cat((hn_forward, hn_backward), 2)
+            encoder_cn = torch.cat((cn_forward, cn_backward), 2)
 
-            # only return the hidden and cell states for the last layer and pass it to the decoder
+
+            # Only return the hidden and cell states for the last layer and pass it to the decoder
+            encoder_hn_last_layer = encoder_hn[-1].view(1, 1, -1)
             encoder_cn_last_layer = encoder_cn[-1].view(1,1,-1)
-            encoder_hn_last_layer = encoder_hn[-1].view(1,1,-1)
 
-            # Last layer
-            encoder_hidden_last = [encoder_cn_last_layer, encoder_hn_last_layer]
+            # The list of states
+            encoder_hidden_last = [encoder_hn_last_layer, encoder_cn_last_layer]
 
         else:
             for ei in range(input_length):
