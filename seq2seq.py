@@ -257,7 +257,7 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
 
             # Extract the hidden and cell states
             hn_forward, cn_forward = encoder_hidden_forward
-            hn_backward, cn_backward = encoder_hidden_forward
+            hn_backward, cn_backward = encoder_hidden_backward
 
             # Concatenate the hidden and cell states for forward and backward paths.
             encoder_hn = torch.cat((hn_forward, hn_backward), 2)
@@ -386,7 +386,7 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
     bridge_optimizer = optim.SGD(bridge.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
 
-    num_epochs = 20
+    num_epochs = 10
     n_iters_per_epoch = int(len(trainset) / args.batch_size)
     for i in range(num_epochs):
 
