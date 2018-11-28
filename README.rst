@@ -63,8 +63,9 @@ The encoder, will generally be initialized as below:
 **NOTE:** We ``do NOT`` generate the whole LSTM/Bi-LSTM architecture using Pytorch. Instead, we just use
 the LSTM cells to represent **what exactly is going on in the encoding/decoding** phases!
 
-The initialization of the LSTM is a little bit different compared to the LSTM. Both cell state and hidden states
-must be initialized as belows:
+The initialization of the LSTM is a little bit different compared to the LSTM
+[`Understanding LSTM Netwroks <http://colah.github.io/posts/2015-08-Understanding-LSTMs/>`_ ].
+Both cell state and hidden states must be initialized as belows:
 
 .. code-block:: python
 
