@@ -41,6 +41,7 @@ parser.add_argument('--epochs_per_lr_drop', default=450, type=float,
 ##################
 # Training Flags #
 ##################
+parser.add_argument('--num_epochs', default=10, type=int, help='Number of epochs for training for training')
 parser.add_argument('--batch_size', default=32, type=int, help='Batch size for training')
 parser.add_argument('--num_workers', default=8, type=int, help='Number of workers used in dataloading')
 parser.add_argument('--num_epoch', default=600, type=int, help='Number of training iterations')
@@ -78,7 +79,7 @@ else:
 # Creating the dataset object #
 ###############################
 # Create training data object
-trainset = Dataset(phase='train', max_input_length=10)
+trainset = Dataset(phase='train', max_input_length=10, auto_encoder=args.auto_encoder)
 
 # Extract the languages' attributes
 input_lang, output_lang = trainset.langs()
@@ -90,7 +91,7 @@ trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size,
 dataiter = iter(trainloader)
 
 # Create testing data object
-testset = Dataset(phase='test', max_input_length=10)
+testset = Dataset(phase='test', max_input_length=10, auto_encoder=args.auto_encoder)
 testloader = torch.utils.data.DataLoader(testset, batch_size=1,
                                           shuffle=True, num_workers=1, pin_memory=False, drop_last=True)
 
@@ -100,7 +101,7 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=1,
 
 class EncoderRNN(nn.Module):
     """
-    The encoder generates a single output vector that embodies the input seqence meaning.
+    The encoder generates a single output vector that embodies the input sequence meaning.
     The general procedure is as follows:
         1. In each step, a word will be fed to a network and it generates
          an output and a hidden state.
@@ -264,11 +265,11 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
             encoder_cn = torch.cat((cn_forward, cn_backward), 2)
 
 
-            # only return the hidden and cell states for the last layer and pass it to the decoder
+            # Only return the hidden and cell states for the last layer and pass it to the decoder
             encoder_hn_last_layer = encoder_hn[-1].view(1, 1, -1)
             encoder_cn_last_layer = encoder_cn[-1].view(1,1,-1)
 
-            # Linear projection
+            # The list of states
             encoder_hidden = [encoder_hn_last_layer, encoder_cn_last_layer]
 
 
@@ -386,9 +387,8 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
     bridge_optimizer = optim.SGD(bridge.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
 
-    num_epochs = 10
     n_iters_per_epoch = int(len(trainset) / args.batch_size)
-    for i in range(num_epochs):
+    for i in range(args.num_epochs):
 
         for iteration, data in enumerate(trainloader, 1):
 
@@ -423,7 +423,7 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
                 plot_losses.append(plot_loss_avg)
                 plot_loss_total = 0
 
-        print('####### Finished epoch %d of %d ########' % (i+1, num_epochs))
+        print('####### Finished epoch %d of %d ########' % (i+1, args.num_epochs))
 
 
 ##############
@@ -455,7 +455,7 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
 
             # Extract the hidden and cell states
             hn_forward, cn_forward = encoder_hidden_forward
-            hn_backward, cn_backward = encoder_hidden_forward
+            hn_backward, cn_backward = encoder_hidden_backward
 
             # Concatenate the hidden and cell states for forward and backward paths.
             encoder_cn = torch.cat((cn_forward, cn_backward), 2)
@@ -515,8 +515,8 @@ def evaluateRandomly(encoder, decoder, bridge, n=10):
             input_tensor = input_tensor.cuda()
             output_tensor = output_tensor.cuda()
 
-        input_sentence = ' '.join(transformer.SentenceFromTensor_(input_lang, input_tensor))
-        output_sentence = ' '.join(transformer.SentenceFromTensor_(output_lang, output_tensor))
+        input_sentence = ' '.join(SentenceFromTensor_(input_lang, input_tensor))
+        output_sentence = ' '.join(SentenceFromTensor_(output_lang, output_tensor))
         print('Input: ', input_sentence)
         print('Output: ', output_sentence)
         output_words = evaluate(encoder, decoder, bridge, input_tensor)
