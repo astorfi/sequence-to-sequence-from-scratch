@@ -57,7 +57,7 @@ parser.add_argument('--batch_per_log', default=10, type=int, help='Print the log
 
 parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
 parser.add_argument('--MAX_LENGTH', default=10, type=int, help='Maximum length of sentence')
-parser.add_argument('--bidirectional', default=True, type=str2bool, help='bidirectional LSRM')
+parser.add_argument('--bidirectional', default=False, type=str2bool, help='bidirectional LSRM')
 parser.add_argument('--hidden_size_decoder', default=256, type=int, help='Decoder Hidden Size')
 parser.add_argument('--num_layer_decoder', default=1, type=int, help='Number of LSTM layers for decoder')
 parser.add_argument('--hidden_size_encoder', default=256, type=int, help='Eecoder Hidden Size')
@@ -145,14 +145,14 @@ class EncoderRNN(nn.Module):
     def initHidden(self):
 
         if self.bidirectional:
-            encoder_cell = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+            encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
                                       torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
-            encoder_cell = {"forward": encoder_cell, "backward": encoder_cell}
-            return encoder_cell
+            encoder_state = {"forward": encoder_state, "backward": encoder_state}
+            return encoder_state
         else:
-            encoder_cell = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+            encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
                               torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
-            return encoder_cell
+            return encoder_state
 
 class DecoderRNN(nn.Module):
     """

@@ -28,7 +28,33 @@ The encoder generates a single output vector that embodies the input sequence me
     3. In the end, the last output will be the representative of the input sentence (called the "context vector").
 
 The ``EncoderRNN`` attribute is dedicated to the encoder structure. The Encoder in our code,
-can be a ``unidirectional/bidirectional LSTM``. A Bidirectional LSTM consists of two
-independent LSTMs, one take the input sequence in normal time order and the other one
+can be a ``unidirectional/bidirectional LSTM``. A *Bidirectional* LSTM consists of *two
+independent LSTMs*, one take the input sequence in normal time order and the other one
 will be fed with the input sequence in the reverse time order. The outputs of the two
-will usually be concatenated at each time step.
+will usually be concatenated at each time step (usually the *last hidden states* will be concatenated
+and returned). The created feature vector will represents the initial hidden states of the decoder.
+
+The encoder, will generally be initialized as below:
+
+.. code-block:: python
+
+  def __init__(self, hidden_size, input_size, batch_size, num_layers=1, bidirectional=False):
+     """
+     * For nn.LSTM, same input_size & hidden_size is chosen.
+     :param input_size: The size of the input vocabulary
+     :param hidden_size: The hidden size of the RNN.
+     :param batch_size: The batch_size for mini-batch optimization.
+     :param num_layers: Number of RNN layers. Default: 1
+     :param bidirectional: If the encoder is a bi-directional LSTM. Default: False
+     """
+     super(EncoderRNN, self).__init__()
+     self.batch_size = batch_size
+     self.num_layers = num_layers
+     self.bidirectional = bidirectional
+     self.hidden_size = hidden_size
+
+     # The input should be transformed to a vector that can be fed to the network.
+     self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
+
+     # The LSTM layer for the input
+     self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
