@@ -32,7 +32,14 @@ can be a ``unidirectional/bidirectional LSTM``. A *Bidirectional* LSTM consists 
 independent LSTMs*, one take the input sequence in normal time order and the other one
 will be fed with the input sequence in the reverse time order. The outputs of the two
 will usually be concatenated at each time step (usually the *last hidden states* will be concatenated
-and returned). The created feature vector will represents the initial hidden states of the decoder.
+and returned). The created feature vector will represents the initial hidden states of the decoder. The
+architecture of a bi-lstm is as below:
+
+.. figure:: _img/bilstm.png
+   :scale: 50
+   :alt: map to buried treasure
+
+As can be observered, two ``independent`` different set of weights ``MUST`` be considered for the forward and backward passes.
 
 The encoder, will generally be initialized as below:
 

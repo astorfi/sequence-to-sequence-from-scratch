@@ -128,19 +128,39 @@ class EncoderRNN(nn.Module):
         self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
 
         # The LSTM layer for the input
-        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
+        if args.bidirectional:
+            self.lstm_forward = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
+            self.lstm_backward = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
+        else:
+            self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
 
 
     def forward(self, input, hidden):
-        # Make the data in the correct format as the RNN input.
-        embedded = self.embedding(input).view(1, 1, -1)
-        rnn_input = embedded
-        # The following descriptions of shapes and tensors are extracted from the official Pytorch documentation:
-        # output-shape: (seq_len, batch, num_directions * hidden_size): tensor containing the output features (h_t) from the last layer of the LSTM
-        # h_n of shape (num_layers * num_directions, batch, hidden_size): tensor containing the hidden state
-        # c_n of shape (num_layers * num_directions, batch, hidden_size): tensor containing the cell state
-        output, (h_n, c_n) = self.lstm(rnn_input, hidden)
-        return output, (h_n, c_n)
+
+        if args.bidirectional:
+            input_forward, input_backward = input
+            hidden_forward, hidden_backward = hidden
+            input_forward = self.embedding(input_forward).view(1, 1, -1)
+            input_backward = self.embedding(input_backward).view(1, 1, -1)
+
+            out_forward, (h_n_forward, c_n_forward) = self.lstm_forward(input_forward, hidden_forward)
+            out_backward, (h_n_backward, c_n_backward) = self.lstm_backward(input_backward, hidden_backward)
+
+            forward_state = (h_n_forward, c_n_forward)
+            backward_state = (h_n_backward, c_n_backward)
+            output_state = (forward_state, backward_state)
+
+            return output_state
+        else:
+            # Make the data in the correct format as the RNN input.
+            embedded = self.embedding(input).view(1, 1, -1)
+            rnn_input = embedded
+            # The following descriptions of shapes and tensors are extracted from the official Pytorch documentation:
+            # output-shape: (seq_len, batch, num_directions * hidden_size): tensor containing the output features (h_t) from the last layer of the LSTM
+            # h_n of shape (num_layers * num_directions, batch, hidden_size): tensor containing the hidden state
+            # c_n of shape (num_layers * num_directions, batch, hidden_size): tensor containing the cell state
+            output, (h_n, c_n) = self.lstm(rnn_input, hidden)
+            return output, (h_n, c_n)
 
     def initHidden(self):
 
@@ -248,13 +268,8 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
             encoder_hidden_forward = encoder_hidden['forward']
             encoder_hidden_backward = encoder_hidden['backward']
             for ei in range(input_length):
-                encoder_output, encoder_hidden_forward = encoder(
-                    input_tensor_step[ei], encoder_hidden_forward)
-                encoder_outputs[step_idx, ei, 0:encoder.hidden_size] = encoder_output[0, 0]
-            for ei in range(input_length):
-                encoder_output, encoder_hidden_backward = encoder(
-                    input_tensor_step[input_length - 1 - ei], encoder_hidden_backward)
-                encoder_outputs[step_idx, ei, encoder.hidden_size:] = encoder_output[0, 0]
+                (encoder_hidden_forward, encoder_hidden_backward) = encoder(
+                    (input_tensor_step[ei],input_tensor_step[input_length - 1 - ei]), (encoder_hidden_forward,encoder_hidden_backward))
 
             # Extract the hidden and cell states
             hn_forward, cn_forward = encoder_hidden_forward
@@ -423,6 +438,7 @@ def trainIters(encoder, decoder, bridge, print_every=1000, plot_every=100, learn
                 plot_losses.append(plot_loss_avg)
                 plot_loss_total = 0
 
+
         print('####### Finished epoch %d of %d ########' % (i+1, args.num_epochs))
 
 
@@ -444,29 +460,29 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
         encoder_hidden = encoder.initHidden()
 
         if args.bidirectional:
+            encoder_outputs = torch.zeros(args.batch_size, max_length, 2 * encoder.hidden_size, device=device)
             encoder_hidden_forward = encoder_hidden['forward']
             encoder_hidden_backward = encoder_hidden['backward']
+
             for ei in range(input_length):
-                encoder_output, encoder_hidden_forward = encoder(
-                    input_tensor[ei], encoder_hidden_forward)
-            for ei in range(input_length):
-                encoder_output, encoder_hidden_backward = encoder(
-                    input_tensor[input_length - 1 - ei], encoder_hidden_backward)
+                (encoder_hidden_forward, encoder_hidden_backward) = encoder(
+                    (input_tensor[ei],input_tensor[input_length - 1 - ei]), (encoder_hidden_forward,encoder_hidden_backward))
 
             # Extract the hidden and cell states
             hn_forward, cn_forward = encoder_hidden_forward
             hn_backward, cn_backward = encoder_hidden_backward
 
             # Concatenate the hidden and cell states for forward and backward paths.
-            encoder_cn = torch.cat((cn_forward, cn_backward), 2)
             encoder_hn = torch.cat((hn_forward, hn_backward), 2)
+            encoder_cn = torch.cat((cn_forward, cn_backward), 2)
 
-            # only return the hidden and cell states for the last layer and pass it to the decoder
+
+            # Only return the hidden and cell states for the last layer and pass it to the decoder
+            encoder_hn_last_layer = encoder_hn[-1].view(1, 1, -1)
             encoder_cn_last_layer = encoder_cn[-1].view(1,1,-1)
-            encoder_hn_last_layer = encoder_hn[-1].view(1,1,-1)
 
-            # Last layer
-            encoder_hidden_last = [encoder_cn_last_layer, encoder_hn_last_layer]
+            # The list of states
+            encoder_hidden_last = [encoder_hn_last_layer, encoder_cn_last_layer]
 
         else:
             for ei in range(input_length):

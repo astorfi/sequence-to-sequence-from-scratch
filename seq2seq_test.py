@@ -57,7 +57,7 @@ parser.add_argument('--batch_per_log', default=10, type=int, help='Print the log
 
 parser.add_argument('--auto_encoder', default=True, type=str2bool, help='Use auto-encoder model')
 parser.add_argument('--MAX_LENGTH', default=10, type=int, help='Maximum length of sentence')
-parser.add_argument('--bidirectional', default=True, type=str2bool, help='bidirectional LSRM')
+parser.add_argument('--bidirectional', default=False, type=str2bool, help='bidirectional LSRM')
 parser.add_argument('--hidden_size_decoder', default=256, type=int, help='Decoder Hidden Size')
 parser.add_argument('--num_layer_decoder', default=1, type=int, help='Number of LSTM layers for decoder')
 parser.add_argument('--hidden_size_encoder', default=256, type=int, help='Eecoder Hidden Size')
@@ -267,15 +267,6 @@ def train(input_tensor, target_tensor, mask_input, mask_target, encoder, decoder
             encoder_outputs = torch.zeros(args.batch_size, max_length, 2 * encoder.hidden_size, device=device)
             encoder_hidden_forward = encoder_hidden['forward']
             encoder_hidden_backward = encoder_hidden['backward']
-            # for ei in range(input_length):
-            #     encoder_output, encoder_hidden_forward = encoder(
-            #         input_tensor_step[ei], encoder_hidden_forward)
-            #     encoder_outputs[step_idx, ei, 0:encoder.hidden_size] = encoder_output[0, 0]
-            # for ei in range(input_length):
-            #     encoder_output, encoder_hidden_backward = encoder(
-            #         input_tensor_step[input_length - 1 - ei], encoder_hidden_backward)
-            #     encoder_outputs[step_idx, ei, encoder.hidden_size:] = encoder_output[0, 0]
-
             for ei in range(input_length):
                 (encoder_hidden_forward, encoder_hidden_backward) = encoder(
                     (input_tensor_step[ei],input_tensor_step[input_length - 1 - ei]), (encoder_hidden_forward,encoder_hidden_backward))
@@ -472,14 +463,6 @@ def evaluate(encoder, decoder, bridge, input_tensor, max_length=args.MAX_LENGTH)
             encoder_outputs = torch.zeros(args.batch_size, max_length, 2 * encoder.hidden_size, device=device)
             encoder_hidden_forward = encoder_hidden['forward']
             encoder_hidden_backward = encoder_hidden['backward']
-            # for ei in range(input_length):
-            #     encoder_output, encoder_hidden_forward = encoder(
-            #         input_tensor_step[ei], encoder_hidden_forward)
-            #     encoder_outputs[step_idx, ei, 0:encoder.hidden_size] = encoder_output[0, 0]
-            # for ei in range(input_length):
-            #     encoder_output, encoder_hidden_backward = encoder(
-            #         input_tensor_step[input_length - 1 - ei], encoder_hidden_backward)
-            #     encoder_outputs[step_idx, ei, encoder.hidden_size:] = encoder_output[0, 0]
 
             for ei in range(input_length):
                 (encoder_hidden_forward, encoder_hidden_backward) = encoder(
