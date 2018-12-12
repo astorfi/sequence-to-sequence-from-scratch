@@ -199,6 +199,11 @@ The linear layer will be defined as below:
         else:
             return self.linear_connection_op(input)
 
+
+============
+Training
+============
+
 ***************
 References
 ***************
