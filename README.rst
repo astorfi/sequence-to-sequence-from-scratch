@@ -13,6 +13,9 @@ Documentation
 Dataset
 ============
 
+The dataset object is heavily inspired by the official Pytorch tutorial: [`TRANSLATION WITH A SEQUENCE TO SEQUENCE NETWORK AND ATTENTION <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_]
+
+
 ============
 Model
 ============
