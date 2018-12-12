@@ -38,7 +38,8 @@ become highly correlated in the representation space as well. One of the main in
 is the high generalization power as opposed to sparse higher dimensional representation [goldberg2017neural]_. Unlike the traditional
 bag-of-word representation in which different words have quite different representation regardless of their usage,
 in learning the distributed representation, the usage of words in the context is of great importance which lead to
-similar representation for correlated words in meaning. The are different approaches for creating word embedding.
+similar representation for correlated words in meaning. The are different approaches for creating word embedding. Please
+refer to the great Pytorch tutorial titled [`WORD EMBEDDINGS: ENCODING LEXICAL SEMANTICS <https://pytorch.org/tutorials/beginner/nlp/word_embeddings_tutorial.html>`_].
 
 ------------------------------------------------------------
 Encoder
