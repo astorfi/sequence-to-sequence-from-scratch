@@ -39,7 +39,9 @@ architecture of a bi-lstm is as below:
    :scale: 50
    :alt: map to buried treasure
 
-As can be observered, two ``independent`` different set of weights ``MUST`` be considered for the forward and backward passes.
+**NOTE:** As can be observered in the figure *colors*, two ``independent`` different set of
+ weights ``MUST`` be considered for the forward and backward passes, Otherwise, the network will
+ assume the backward pass follows the forward pass!! 
 
 The encoder, will generally be initialized as below:
 
