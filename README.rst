@@ -140,6 +140,33 @@ So the output generation will be upon the network sequence prediction. In case o
 targeted output word. It provides better guidance for the training but it is inconsistent with the evaluation stage as
 targeted outputs do not exists! In order to handle the issue with this approach, new approaches have been proposed [lamb2016professor]_.
 
+The decoder, will generally be initialized as below:
+
+.. code-block:: python
+
+    def __init__(self, hidden_size, output_size, batch_size, num_layers=1):
+        super(DecoderRNN, self).__init__()
+        self.batch_size = batch_size
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.embedding = nn.Embedding(output_size, hidden_size)
+        self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=1)
+        self.out = nn.Linear(hidden_size, output_size)
+
+    def forward(self, input, hidden):
+        output = self.embedding(input).view(1, 1, -1)
+        output, (h_n, c_n) = self.lstm(output, hidden)
+        output = self.out(output[0])
+        return output, (h_n, c_n)
+
+    def initHidden(self):
+        """
+        The spesific type of the hidden layer for the RNN type that is used (LSTM).
+        :return: All zero hidden state.
+        """
+        return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+                torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+
 ***************
 References
 ***************
