@@ -24,6 +24,22 @@ between two sequences. In another word, the meaningful connection between the tw
 sequence to sequence modeling examples are ``Machine Transtional`` and ``Autoencoders``. Here, we can do both just by
 chaning the ``input-output`` language sequences.
 
+------------------
+Word Embedding
+------------------
+
+At the very first step, we should know what are the ``input-output sequences`` and how we should ``represent the data``
+for the model to understand it. Clearly, it should be a sequence of words in the input and the equivalent
+sequence in the output. In case of having an autoencoder, both input and output sentences
+are the same.
+
+A learned representation for context elements is called ``word embedding`` in which the words with similar meaning, ideally,
+become highly correlated in the representation space as well. One of the main incentives behind word embedding representations
+is the high generalization power as opposed to sparse higher dimensional representation [CIT2002]_. Unlike the traditional
+bag-of-word representation in which different words have quite different representation regardless of their usage,
+in learning the distributed representation, the usage of words in the context is of great importance which lead to
+similar representation for correlated words in meaning. The are different approaches for creating word embedding.
+
 ------------------------------------------------------------
 Encoder
 ------------------------------------------------------------
@@ -80,7 +96,7 @@ The encoder, will generally be initialized as below:
 the LSTM cells to represent **what exactly is going on in the encoding/decoding** phases!
 
 The initialization of the LSTM is a little bit different compared to the LSTM
-[`Understanding LSTM Netwroks <http://colah.github.io/posts/2015-08-Understanding-LSTMs/>`_ ].
+[`Understanding LSTM Netwroks <http://colah.github.io/posts/2015-08-Understanding-LSTMs/>`_].
 Both cell state and hidden states must be initialized as belows:
 
 .. code-block:: python
@@ -105,3 +121,5 @@ References
 ***************
 
 https://medium.com/datadriveninvestor/neural-translation-model-95277838d17d
+
+.. [CIT2002] Goldberg, Yoav. "Neural network methods for natural language processing." Synthesis Lectures on Human Language Technologies 10.1 (2017): 1-309.
