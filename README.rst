@@ -41,7 +41,7 @@ architecture of a bi-lstm is as below:
 
 **NOTE:** As can be observered in the figure *colors*, two ``independent`` different set of
  weights ``MUST`` be considered for the forward and backward passes, Otherwise, the network will
- assume the backward pass follows the forward pass!! 
+ assume the backward pass follows the forward pass!!
 
 The encoder, will generally be initialized as below:
 
@@ -92,3 +92,9 @@ Both cell state and hidden states must be initialized as belows:
 
 As it can be seen in the above code, for the *Bidirectional LSTM*, we have **separate and independent**
 states for ``forwards`` and ``backward`` directions.
+
+***************
+References
+***************
+
+https://medium.com/datadriveninvestor/neural-translation-model-95277838d17d
