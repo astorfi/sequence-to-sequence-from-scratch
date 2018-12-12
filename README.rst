@@ -200,9 +200,34 @@ The linear layer will be defined as below:
             return self.linear_connection_op(input)
 
 
-============
-Training
-============
+====================
+Training/Evaluation
+====================
+
+The training/evaluation of this model is done in a not very optimized way deliberately!! The reasons are as follows:
+
+  1. I followed the principle of ``running with one click`` that I personnal have for all my open source projects.
+  The principle says: "Everyone must be able to run everything by one click!". So you see pretty much everything in one
+  Python file!
+
+  2. Instead of using ready-to-use RNN objects which process mini-batches of data, we input the sequence word-by-word to help
+  the readers having a better sense of what is happening behind the doors of seq-to-seq modeling scheme.
+
+  3. For the evaluation, we simply generate the outputs of the system based on the built model to see if the model is good enouth!
+
+
+For mini-batch optimization, we input batches of sequences. There is a very important note for the batch feeding. After
+inputing each batch element, the ``encoder hidden states`` must be reset. Otherwise, the system may assume the next sequence in a batch follows
+the previously processed sequence. It can be seen in the following Python script:
+
+
+.. code-block:: python
+  for step_idx in range(args.batch_size):
+      # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
+      # the new input sequence as a continuation of the previous sequence.
+      encoder_hidden = encoder.initHidden()
+      input_tensor_step = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
+      input_length = input_tensor_step.size(0)
 
 ***************
 References
