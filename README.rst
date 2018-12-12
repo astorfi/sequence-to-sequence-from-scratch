@@ -17,6 +17,13 @@ Dataset
 Model
 ============
 
+The goal here is to create a **sequence-to-sequence mapping** model which is going to be built on an
+Encoder-Decoder network. The model encode the information into a specific representation. This representation
+later on will be mapped as a target output sequence. This transition makes the model understand the interoperibility
+between two sequences. In another word, the meaningful connection between the two sequence will be created. Two important
+sequence to sequence modeling examples are ``Machine Transtional`` and ``Autoencoders``. Here, we can do both just by
+chaning the ``input-output`` language sequences.
+
 ------------------------------------------------------------
 Encoder
 ------------------------------------------------------------
