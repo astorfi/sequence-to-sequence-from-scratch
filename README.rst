@@ -35,7 +35,7 @@ are the same.
 
 A learned representation for context elements is called ``word embedding`` in which the words with similar meaning, ideally,
 become highly correlated in the representation space as well. One of the main incentives behind word embedding representations
-is the high generalization power as opposed to sparse higher dimensional representation [CIT2002]_. Unlike the traditional
+is the high generalization power as opposed to sparse higher dimensional representation [goldberg2017neural]_. Unlike the traditional
 bag-of-word representation in which different words have quite different representation regardless of their usage,
 in learning the distributed representation, the usage of words in the context is of great importance which lead to
 similar representation for correlated words in meaning. The are different approaches for creating word embedding.
@@ -122,4 +122,4 @@ References
 
 https://medium.com/datadriveninvestor/neural-translation-model-95277838d17d
 
-.. [CIT2002] Goldberg, Yoav. "Neural network methods for natural language processing." Synthesis Lectures on Human Language Technologies 10.1 (2017): 1-309.
+.. [goldberg2017neural] Goldberg, Yoav. "Neural network methods for natural language processing." Synthesis Lectures on Human Language Technologies 10.1 (2017): 1-309.
