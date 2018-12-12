@@ -213,7 +213,8 @@ The training/evaluation of this model is done in a not very optimized way delibe
   2. Instead of using ready-to-use RNN objects which process mini-batches of data, we input the sequence word-by-word to help
   the readers having a better sense of what is happening behind the doors of seq-to-seq modeling scheme.
 
-3. For the evaluation, we simply generate the outputs of the system based on the built model to see if the model is good enouth!
+  3. For the evaluation, we simply generate the outputs of
+  the system based on the built model to see if the model is good enough!
 
 
 For mini-batch optimization, we input batches of sequences. There is a very important note for the batch feeding. After
