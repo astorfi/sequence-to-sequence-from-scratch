@@ -230,6 +230,36 @@ the previously processed sequence. It can be seen in the following Python script
       input_tensor_step = input_tensor[:, step_idx][input_tensor[:, step_idx] != 0]
       input_length = input_tensor_step.size(0)
 
+
+====================
+Results
+====================
+
+Some sample results for autoencoder training are as follows:
+
+.. code-block:: console
+
+    Input:  you re very generous  EOS
+    Output:  you re very generous  EOS
+    Predicted Output:  you re very generous  <EOS>
+
+    Input:  i m worried about the future  EOS
+    Output:  i m worried about the future  EOS
+    Predicted Output:  i m worried about the about  <EOS>
+
+    Input:  we re anxious  EOS
+    Output:  we re anxious  EOS
+    Predicted Output:  we re anxious  <EOS>
+
+    Input:  she is more wise than clever  EOS
+    Output:  she is more wise than clever  EOS
+    Predicted Output:  she is nothing than a than  <EOS>
+
+    Input:  i m glad i invited you  EOS
+    Output:  i m glad i invited you  EOS
+    Predicted Output:  i m glad i invited you  <EOS>
+
+
 ***************
 References
 ***************
