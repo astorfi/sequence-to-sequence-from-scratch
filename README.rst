@@ -24,8 +24,16 @@ In fact, progress in MT can be categorized into pre-deep learning and deep learn
 be some of the reference books in NLP community such as ”Speech and Language Processing” [jurafsky2000speech]_. Second version of
 this book was published in 2008 and chapter 25 is dedicated to machine translation but there is not a single mention of
 deep learning usage for MT. However, today we know that the top performing machine translation systems are solely
-based on neural networks which led to the term Neural Machine Translation (NMT). We dedicate this project to a core
-deep learning based model for sequence-to-sequence modeling and in particular machine translation: An Encoder-Decoder architecture
+based on neural networks which led to the term Neural Machine Translation (NMT).
+
+When we use the term neural machine translation, we are talking about applying different deep learning tech-
+niques for the task of machine translation. It was after success of neural network in image classification tasks
+that researchers started to use neural networks in machine translation. Around 2013 research groups started to achieve
+breakthrough results in NMT and boosted state of the art performance. Unlike traditional statistical machine transla-
+tion, NMT is based on an end-to-end neural network that increases the performance of machine translation systems
+[bahdanau2014neural]_.
+
+We dedicate this project to a core deep learning based model for sequence-to-sequence modeling and in particular machine translation: An Encoder-Decoder architecture
 based on Long-Short Term Memory (LSTM) networks.
 
 ------------------------------------------------------------
@@ -387,3 +395,4 @@ References
 .. [jurafsky2000speech] Jurafsky, D., 2000. Speech and language processing: An introduction to natural language processing. Computational linguistics, and speech recognition.
 .. [goldberg2017neural] Goldberg, Yoav. "Neural network methods for natural language processing." Synthesis Lectures on Human Language Technologies 10.1 (2017): 1-309.
 .. [lamb2016professor] Lamb, A.M., GOYAL, A.G.A.P., Zhang, Y., Zhang, S., Courville, A.C. and Bengio, Y., 2016. Professor forcing: A new algorithm for training recurrent networks. In Advances In Neural Information Processing Systems (pp. 4601-4609).
+.. [bahdanau2014neural] Bahdanau, D., Cho, K. and Bengio, Y., 2014. Neural machine translation by jointly learning to align and translate. arXiv preprint arXiv:1409.0473.
