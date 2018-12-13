@@ -48,6 +48,51 @@ transforming word to its associated index and ``index2word`` does the reverse:
 Unlike the [`Pytorch tutorial <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_] we started
 the indexing from ``1`` by ``SOS_token = 1`` to have the ``zero reserved``!
 
+In the end, we define a dataset class to handle the processing:
+
+.. code-block:: python
+
+  class Dataset():
+      """dataset object"""
+
+      def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None, auto_encoder=False):
+          """
+          The initialization of the dataset object.
+          :param phase: train/test.
+          :param num_embeddings: The embedding dimentionality.
+          :param max_input_length: The maximum enforced length of the sentences.
+          :param transform: Post processing if necessary.
+          :param auto_encoder: If we are training an autoencoder or not.
+          """
+          if auto_encoder:
+              lang_in = 'eng'
+              lang_out = 'eng'
+          else:
+              lang_in = 'eng'
+              lang_out = 'fra'
+          # Skip and eliminate the sentences with a length larger than max_input_length!
+          input_lang, output_lang, pairs = prepareData(lang_in, lang_out, max_input_length, auto_encoder=auto_encoder, reverse=True)
+          print(random.choice(pairs))
+
+          # Randomize list
+          random.shuffle(pairs)
+
+          if phase == 'train':
+              selected_pairs = pairs[0:int(0.8 * len(pairs))]
+          else:
+              selected_pairs = pairs[int(0.8 * len(pairs)):]
+
+          # Getting the tensors
+          selected_pairs_tensors = [tensorsFromPair(selected_pairs[i], input_lang, output_lang, max_input_length)
+                       for i in range(len(selected_pairs))]
+
+          self.transform = transform
+          self.num_embeddings = num_embeddings
+          self.max_input_length = max_input_length
+          self.data = selected_pairs_tensors
+          self.input_lang = input_lang
+          self.output_lang = output_lang
+
 
 ============
 Model
