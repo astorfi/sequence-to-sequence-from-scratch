@@ -9,89 +9,29 @@ Table of Contents
 Documentation
 ***************
 
-============
-Dataset
-============
+==============================
+Sequence to Sequence Modeling
+==============================
 
-**NOTE:** The dataset object is heavily inspired by the official Pytorch tutorial: [`TRANSLATION WITH A SEQUENCE TO SEQUENCE NETWORK AND ATTENTION <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_]
-The dataset is prepaired using the ``data_loader.py`` script.
+In this project we explain the sequence to sequence modeling using [`Pytorch <https://pytorch.org/>`_].
 
-At the first state we have to define ``word indexing`` for further processing. The ``word2index`` is the dictionary of
-transforming word to its associated index and ``index2word`` does the reverse:
+------------------------------------------------------------
+What is the problem?
+------------------------------------------------------------
 
-.. code-block:: python
+------------------------------------------------------------
+What makes the problem a problem?
+------------------------------------------------------------
 
-  SOS_token = 1
-  EOS_token = 2
 
-  class Lang:
-    def __init__(self, name):
-        self.name = name
-        self.word2index = {}
-        self.word2count = {}
-        self.index2word = {0: "<pad>", SOS_token: "SOS", EOS_token: "EOS"}
-        self.n_words = 3  # Count SOS and EOS
+------------------------------------------------------------
+What is the secret sauce here?
+------------------------------------------------------------
 
-    def addSentence(self, sentence):
-        for word in sentence.split(' '):
-            self.addWord(word)
 
-    def addWord(self, word):
-        if word not in self.word2index:
-            self.word2index[word] = self.n_words
-            self.word2count[word] = 1
-            self.index2word[self.n_words] = word
-            self.n_words += 1
-        else:
-            self.word2count[word] += 1
-
-Unlike the [`Pytorch tutorial <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_] we started
-the indexing from ``1`` by ``SOS_token = 1`` to have the ``zero reserved``!
-
-In the end, we define a dataset class to handle the processing:
-
-.. code-block:: python
-
-  class Dataset():
-      """dataset object"""
-
-      def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None, auto_encoder=False):
-          """
-          The initialization of the dataset object.
-          :param phase: train/test.
-          :param num_embeddings: The embedding dimentionality.
-          :param max_input_length: The maximum enforced length of the sentences.
-          :param transform: Post processing if necessary.
-          :param auto_encoder: If we are training an autoencoder or not.
-          """
-          if auto_encoder:
-              lang_in = 'eng'
-              lang_out = 'eng'
-          else:
-              lang_in = 'eng'
-              lang_out = 'fra'
-          # Skip and eliminate the sentences with a length larger than max_input_length!
-          input_lang, output_lang, pairs = prepareData(lang_in, lang_out, max_input_length, auto_encoder=auto_encoder, reverse=True)
-          print(random.choice(pairs))
-
-          # Randomize list
-          random.shuffle(pairs)
-
-          if phase == 'train':
-              selected_pairs = pairs[0:int(0.8 * len(pairs))]
-          else:
-              selected_pairs = pairs[int(0.8 * len(pairs)):]
-
-          # Getting the tensors
-          selected_pairs_tensors = [tensorsFromPair(selected_pairs[i], input_lang, output_lang, max_input_length)
-                       for i in range(len(selected_pairs))]
-
-          self.transform = transform
-          self.num_embeddings = num_embeddings
-          self.max_input_length = max_input_length
-          self.data = selected_pairs_tensors
-          self.input_lang = input_lang
-          self.output_lang = output_lang
+------------------------------------------------------------
+Who cares?
+------------------------------------------------------------
 
 
 ============
@@ -280,6 +220,89 @@ The linear layer will be defined as below:
         else:
             return self.linear_connection_op(input)
 
+============
+Dataset
+============
+
+**NOTE:** The dataset object is heavily inspired by the official Pytorch tutorial: [`TRANSLATION WITH A SEQUENCE TO SEQUENCE NETWORK AND ATTENTION <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_]
+The dataset is prepaired using the ``data_loader.py`` script.
+
+At the first state we have to define ``word indexing`` for further processing. The ``word2index`` is the dictionary of
+transforming word to its associated index and ``index2word`` does the reverse:
+
+.. code-block:: python
+
+  SOS_token = 1
+  EOS_token = 2
+
+  class Lang:
+    def __init__(self, name):
+        self.name = name
+        self.word2index = {}
+        self.word2count = {}
+        self.index2word = {0: "<pad>", SOS_token: "SOS", EOS_token: "EOS"}
+        self.n_words = 3  # Count SOS and EOS
+
+    def addSentence(self, sentence):
+        for word in sentence.split(' '):
+            self.addWord(word)
+
+    def addWord(self, word):
+        if word not in self.word2index:
+            self.word2index[word] = self.n_words
+            self.word2count[word] = 1
+            self.index2word[self.n_words] = word
+            self.n_words += 1
+        else:
+            self.word2count[word] += 1
+
+Unlike the [`Pytorch tutorial <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_] we started
+the indexing from ``1`` by ``SOS_token = 1`` to have the ``zero reserved``!
+
+In the end, we define a dataset class to handle the processing:
+
+.. code-block:: python
+
+  class Dataset():
+      """dataset object"""
+
+      def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None, auto_encoder=False):
+          """
+          The initialization of the dataset object.
+          :param phase: train/test.
+          :param num_embeddings: The embedding dimentionality.
+          :param max_input_length: The maximum enforced length of the sentences.
+          :param transform: Post processing if necessary.
+          :param auto_encoder: If we are training an autoencoder or not.
+          """
+          if auto_encoder:
+              lang_in = 'eng'
+              lang_out = 'eng'
+          else:
+              lang_in = 'eng'
+              lang_out = 'fra'
+          # Skip and eliminate the sentences with a length larger than max_input_length!
+          input_lang, output_lang, pairs = prepareData(lang_in, lang_out, max_input_length, auto_encoder=auto_encoder, reverse=True)
+          print(random.choice(pairs))
+
+          # Randomize list
+          random.shuffle(pairs)
+
+          if phase == 'train':
+              selected_pairs = pairs[0:int(0.8 * len(pairs))]
+          else:
+              selected_pairs = pairs[int(0.8 * len(pairs)):]
+
+          # Getting the tensors
+          selected_pairs_tensors = [tensorsFromPair(selected_pairs[i], input_lang, output_lang, max_input_length)
+                       for i in range(len(selected_pairs))]
+
+          self.transform = transform
+          self.num_embeddings = num_embeddings
+          self.max_input_length = max_input_length
+          self.data = selected_pairs_tensors
+          self.input_lang = input_lang
+          self.output_lang = output_lang
 
 ====================
 Training/Evaluation
