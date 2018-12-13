@@ -13,7 +13,40 @@ Documentation
 Dataset
 ============
 
-The dataset object is heavily inspired by the official Pytorch tutorial: [`TRANSLATION WITH A SEQUENCE TO SEQUENCE NETWORK AND ATTENTION <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_]
+**NOTE:** The dataset object is heavily inspired by the official Pytorch tutorial: [`TRANSLATION WITH A SEQUENCE TO SEQUENCE NETWORK AND ATTENTION <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_]
+The dataset is prepaired using the ``data_loader.py`` script.
+
+At the first state we have to define ``word indexing`` for further processing. The ``word2index`` is the dictionary of
+transforming word to its associated index and ``index2word`` does the reverse:
+
+.. code-block:: python
+
+  SOS_token = 1
+  EOS_token = 2
+
+  class Lang:
+    def __init__(self, name):
+        self.name = name
+        self.word2index = {}
+        self.word2count = {}
+        self.index2word = {0: "<pad>", SOS_token: "SOS", EOS_token: "EOS"}
+        self.n_words = 3  # Count SOS and EOS
+
+    def addSentence(self, sentence):
+        for word in sentence.split(' '):
+            self.addWord(word)
+
+    def addWord(self, word):
+        if word not in self.word2index:
+            self.word2index[word] = self.n_words
+            self.word2count[word] = 1
+            self.index2word[self.n_words] = word
+            self.n_words += 1
+        else:
+            self.word2count[word] += 1
+
+Unlike the [`Pytorch tutorial <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_] we started
+the indexing from ``1`` by ``SOS_token = 1`` to have the ``zero reserved``!
 
 
 ============
