@@ -353,7 +353,5 @@ Recommended Readings
 References
 ***************
 
-https://medium.com/datadriveninvestor/neural-translation-model-95277838d17d
-
 .. [goldberg2017neural] Goldberg, Yoav. "Neural network methods for natural language processing." Synthesis Lectures on Human Language Technologies 10.1 (2017): 1-309.
 .. [lamb2016professor] Lamb, A.M., GOYAL, A.G.A.P., Zhang, Y., Zhang, S., Courville, A.C. and Bengio, Y., 2016. Professor forcing: A new algorithm for training recurrent networks. In Advances In Neural Information Processing Systems (pp. 4601-4609).
