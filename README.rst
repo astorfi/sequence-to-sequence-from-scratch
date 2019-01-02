@@ -52,13 +52,7 @@ Here, we tried to achieve some primary goals as we hope to make this work unique
 
   1. We called this repo ``"from scratch"`` due to the fact that we do NOT consider
   any background for the reader in terms of implementation.
-
-  2. Instead of using high-level package modules, simple RNN architectures
-   are used for demonstration purposes. This helps the reader
-   to ``understand everything from scratch``. The down side,
-   however, is the relatively low speed of training. This may
-   not cause any trouble as we try to train a very small model.
-
+  
   3. The difference between ``uni-directional LSTMs`` and ``bi-directional LSTMs``
   have been clarified using the simple encoder-decoder implementation.
 
