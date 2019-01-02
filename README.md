@@ -134,7 +134,7 @@ follows the forward pass!!
 
 The encoder, will generally be initialized as below:
 
-``` {.sourceCode .python}
+{% highlight python %}
 def __init__(self, hidden_size, input_size, batch_size, num_layers=1, bidirectional=False):
    """
    * For nn.LSTM, same input_size & hidden_size is chosen.
@@ -155,7 +155,7 @@ def __init__(self, hidden_size, input_size, batch_size, num_layers=1, bidirectio
 
    # The LSTM layer for the input
    self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
-```
+{% highlight python %}
 
 **NOTE:** We `do NOT` generate the whole LSTM/Bi-LSTM architecture using
 Pytorch. Instead, we just use the LSTM cells to represent **what exactly
@@ -166,7 +166,7 @@ LSTM \[[Understanding LSTM
 Netwroks](http://colah.github.io/posts/2015-08-Understanding-LSTMs/)\].
 Both cell state and hidden states must be initialized as belows:
 
-``` {.sourceCode .python}
+{% highlight python %}
 def initHidden(self):
 
   if self.bidirectional:
@@ -178,7 +178,7 @@ def initHidden(self):
       encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
                         torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
       return encoder_state
-```
+{% highlight python %}
 
 As it can be seen in the above code, for the *Bidirectional LSTM*, we
 have **separate and independent** states for `forwards` and `backward`
@@ -214,7 +214,7 @@ have been proposed \[lamb2016professor\]\_.
 
 The decoder, will generally be initialized as below:
 
-``` {.sourceCode .python}
+{% highlight python %}
 def __init__(self, hidden_size, output_size, batch_size, num_layers=1):
     super(DecoderRNN, self).__init__()
     self.batch_size = batch_size
@@ -237,7 +237,7 @@ def initHidden(self):
     """
     return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
             torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
-```
+{% highlight python %}
 
 #### Encoder-Decoder Bridge
 
@@ -255,7 +255,7 @@ mismatch is True in the following conditions:
 
 The linear layer will be defined as below:
 
-``` {.sourceCode .python}
+{% highlight python %}
 def __init__(self, bidirectional, hidden_size_encoder, hidden_size_decoder):
     super(Linear, self).__init__()
     self.bidirectional = bidirectional
@@ -269,7 +269,7 @@ def forward(self, input):
         return input
     else:
         return self.linear_connection_op(input)
-```
+{% highlight python %}
 
 ### Dataset
 
@@ -282,7 +282,7 @@ At the first state we have to define `word indexing` for further
 processing. The `word2index` is the dictionary of transforming word to
 its associated index and `index2word` does the reverse:
 
-``` {.sourceCode .python}
+{% highlight python %}
 SOS_token = 1
 EOS_token = 2
 
@@ -306,7 +306,7 @@ class Lang:
           self.n_words += 1
       else:
           self.word2count[word] += 1
-```
+{% highlight python %}
 
 Unlike the \[[Pytorch
 tutorial](https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/)\]
@@ -315,7 +315,7 @@ we started the indexing from `1` by `SOS_token = 1` to have the
 
 In the end, we define a dataset class to handle the processing:
 
-``` {.sourceCode .python}
+{% highlight python %}
 class Dataset():
     """dataset object"""
 
@@ -356,7 +356,7 @@ class Dataset():
         self.data = selected_pairs_tensors
         self.input_lang = input_lang
         self.output_lang = output_lang
-```
+{% highlight python %}
 
 ### Training/Evaluation
 
@@ -380,25 +380,13 @@ For mini-batch optimization, we input batches of sequences. There is a
 very important note for the batch feeding. After inputing each batch
 element, the `encoder hidden states` must be reset. Otherwise, the
 system may assume the next sequence in a batch follows the previously
-processed sequence. It can be seen in the following Python script:
+processed sequence. 
 
-``` {.sourceCode .python}
-```
-
-> for step\_idx in range(args.batch\_size):
->
-> :   \# reset the LSTM hidden state. Must be done before you run a new
->     sequence. Otherwise the LSTM will treat \# the new input sequence
->     as a continuation of the previous sequence. encoder\_hidden =
->     encoder.initHidden() input\_tensor\_step = input\_tensor\[:,
->     step\_idx\]\[input\_tensor\[:, step\_idx\] != 0\] input\_length =
->     input\_tensor\_step.size(0)
->
 ### Results
 
 Some sample results for autoencoder training are as follows:
 
-``` {.sourceCode .console}
+{% highlight console %}
 Input:  you re very generous  EOS
 Output:  you re very generous  EOS
 Predicted Output:  you re very generous  <EOS>
@@ -418,7 +406,7 @@ Predicted Output:  she is nothing than a than  <EOS>
 Input:  i m glad i invited you  EOS
 Output:  i m glad i invited you  EOS
 Predicted Output:  i m glad i invited you  <EOS>
-```
+{% highlight console %}
 
 Recommended Readings
 --------------------
