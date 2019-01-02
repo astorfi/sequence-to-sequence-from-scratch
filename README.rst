@@ -40,10 +40,24 @@ based on Long-Short Term Memory (LSTM) networks.
 What makes the problem a problem?
 ------------------------------------------------------------
 
+Although sequence to sequence modeling scope is broader than just the machine translation task,
+the main focus on seq-2-seq research has been dedicated to MT due to its great importance in real-world
+problems. Furthermore, machine translation is the bridge for a universal human-machine conversation.
 
 ------------------------------------------------------------
 What is the secret sauce here?
 ------------------------------------------------------------
+
+Here, we tried to achieve some primary goals as we hope to make this work unique compared to the many other available tutorials:
+
+  1. We called this repo ``"from scratch"`` due to the fact that we do NOT consider
+    any background for the reader in terms of implementation.
+  2. Instead of using high-level package modules, simple RNN architectures are used for demonstration
+    purposes. This helps the reader to ``understand everything from scratch``. The down side, however, is
+    the relatively low speed of training. This may not cause any trouble as we try to train a very small model.
+  3. The difference between ``uni-directional LSTMs`` and ``bi-directional LSTMs`` have been clarified
+    using the simple encoder-decoder implementation.
+
 
 
 ------------------------------------------------------------
