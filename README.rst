@@ -56,7 +56,7 @@ Here, we tried to achieve some primary goals as we hope to make this work unique
   2. Instead of using high-level package modules,
   simple RNN architectures are used for demonstration purposes.
   This helps the reader to ``understand everything from scratch``.
-  The down side, however, is the relatively low speed of training.
+  The downside, however, is the relatively low speed of training.
   This may not cause any trouble as we try to train a very small model.
 
   3. The difference between ``uni-directional LSTMs`` and ``bi-directional LSTMs``
@@ -65,6 +65,11 @@ Here, we tried to achieve some primary goals as we hope to make this work unique
 ------------------------------------------------------------
 Who cares?
 ------------------------------------------------------------
+
+It tutorial has been provided for the developers/researchers who really want
+to start from scratch and learn everything ``spoon-by-spoon``. The goal is to
+give as much detail as possible so the others do NOT have to spend the time to
+understand hidden and yet very important details.
 
 
 ============
