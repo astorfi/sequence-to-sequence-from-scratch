@@ -386,7 +386,7 @@ processed sequence.
 
 Some sample results for autoencoder training are as follows:
 
-{% highlight console %}
+{% highlight python %}
 Input:  you re very generous  EOS
 Output:  you re very generous  EOS
 Predicted Output:  you re very generous  <EOS>
@@ -406,7 +406,7 @@ Predicted Output:  she is nothing than a than  <EOS>
 Input:  i m glad i invited you  EOS
 Output:  i m glad i invited you  EOS
 Predicted Output:  i m glad i invited you  <EOS>
-{% highlight console %}
+{% highlight python %}
 
 Recommended Readings
 --------------------
@@ -418,4 +418,3 @@ Recommended Readings
     with Attention
 -   [Learning Phrase Representations using RNN Encoder-Decoder for
     Statistical Machine Translation](https://arxiv.org/abs/1406.1078)
-
