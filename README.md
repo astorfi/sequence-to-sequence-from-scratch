@@ -13,8 +13,7 @@ Machine Translation(MT) is one of the areas of NLP that has been
 profoundly affected by advances in deep learning. In fact, progress in
 MT can be categorized into pre-deep learning and deep learning era.
 Confirmation of this could be some of the reference books in NLP
-community such as ”Speech and Language Processing”
-\[jurafsky2000speech\]\_. Second version of this book was published in
+community such as ”Speech and Language Processing”. Second version of this book was published in
 2008 and chapter 25 is dedicated to machine translation but there is not
 a single mention of deep learning usage for MT. However, today we know
 that the top performing machine translation systems are solely based on
@@ -28,7 +27,7 @@ machine translation. Around 2013 research groups started to achieve
 breakthrough results in NMT and boosted state of the art performance.
 Unlike traditional statistical machine transla-tion, NMT is based on an
 end-to-end neural network that increases the performance of machine
-translation systems \[bahdanau2014neural\]\_.
+translation systems.
 
 We dedicate this project to a core deep learning based model for
 sequence-to-sequence modeling and in particular machine translation: An
@@ -93,7 +92,7 @@ in which the words with similar meaning, ideally, become highly
 correlated in the representation space as well. One of the main
 incentives behind word embedding representations is the high
 generalization power as opposed to sparse higher dimensional
-representation \[goldberg2017neural\]\_. Unlike the traditional
+representation. Unlike the traditional
 bag-of-word representation in which different words have quite different
 representation regardless of their usage, in learning the distributed
 representation, the usage of words in the context is of great importance
@@ -432,5 +431,3 @@ Recommended Readings
 -   [Learning Phrase Representations using RNN Encoder-Decoder for
     Statistical Machine Translation](https://arxiv.org/abs/1406.1078)
 
-References
-----------
