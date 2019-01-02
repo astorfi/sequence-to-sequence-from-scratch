@@ -125,7 +125,7 @@ states* will be concatenated and returned). The created feature vector
 will represents the initial hidden states of the decoder. The
 architecture of a bi-lstm is as below:
 
-![alt text](_img/bilstm.png)
+![alt text](https://github.com/astorfi/neural-machine-translation-from-scratch/blob/gh-pages/_img/bilstm.png)
 
 **NOTE:** As can be observered in the figure *colors*, two `independent`
 different set of weights `MUST` be considered for the forward and
