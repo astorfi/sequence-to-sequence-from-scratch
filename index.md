@@ -389,25 +389,27 @@ processed sequence.
 Some sample results for autoencoder training are as follows:
 
 {% highlight python %}
-Input:  you re very generous  EOS
-Output:  you re very generous  EOS
-Predicted Output:  you re very generous  <EOS>
 
-Input:  i m worried about the future  EOS
-Output:  i m worried about the future  EOS
-Predicted Output:  i m worried about the about  <EOS>
+    Input:  you re very generous  EOS
+    Output:  you re very generous  EOS
+    Predicted Output:  you re very generous  <EOS>
 
-Input:  we re anxious  EOS
-Output:  we re anxious  EOS
-Predicted Output:  we re anxious  <EOS>
+    Input:  i m worried about the future  EOS
+    Output:  i m worried about the future  EOS
+    Predicted Output:  i m worried about the about  <EOS>
 
-Input:  she is more wise than clever  EOS
-Output:  she is more wise than clever  EOS
-Predicted Output:  she is nothing than a than  <EOS>
+    Input:  we re anxious  EOS
+    Output:  we re anxious  EOS
+    Predicted Output:  we re anxious  <EOS>
 
-Input:  i m glad i invited you  EOS
-Output:  i m glad i invited you  EOS
-Predicted Output:  i m glad i invited you  <EOS>
+    Input:  she is more wise than clever  EOS
+    Output:  she is more wise than clever  EOS
+    Predicted Output:  she is nothing than a than  <EOS>
+
+    Input:  i m glad i invited you  EOS
+    Output:  i m glad i invited you  EOS
+    Predicted Output:  i m glad i invited you  <EOS>
+    
 {% highlight python %}
 
 Recommended Readings
