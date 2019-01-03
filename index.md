@@ -127,6 +127,8 @@ architecture of a bi-lstm is as below:
 
 <img src="https://github.com/astorfi/neural-machine-translation-from-scratch/blob/gh-pages/_img/bilstm.png" class="img-responsive" alt=""> </div>
 
+![useful image]({{ site.url }}/_img/bilstm.png)
+
 **NOTE:** As can be observered in the figure *colors*, two `independent`
 different set of weights `MUST` be considered for the forward and
 backward passes, Otherwise, the network will assume the backward pass
