@@ -11,7 +11,7 @@ Welcome to Deep Learning NLP documentation!
    :caption: Content
 
    content/documentation
-   content/recommendedreadings
+   content/recommendedreading
 
 .. toctree::
    :maxdepth: 2
