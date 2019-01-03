@@ -357,8 +357,8 @@ the previously processed sequence. It can be seen in the following Python script
 
 
 .. code-block:: python
-  for step_idx in range(args.batch_size):
-    
+
+    for step_idx in range(args.batch_size):
       # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
       # the new input sequence as a continuation of the previous sequence.
       encoder_hidden = encoder.initHidden()

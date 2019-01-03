@@ -487,6 +487,14 @@ the system based on the built model to see if the model is good enough!</p>
 <p>For mini-batch optimization, we input batches of sequences. There is a very important note for the batch feeding. After
 inputing each batch element, the <code class="docutils literal notranslate"><span class="pre">encoder</span> <span class="pre">hidden</span> <span class="pre">states</span></code> must be reset. Otherwise, the system may assume the next sequence in a batch follows
 the previously processed sequence. It can be seen in the following Python script:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">step_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">batch_size</span><span class="p">):</span>
+  <span class="c1"># reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat</span>
+  <span class="c1"># the new input sequence as a continuation of the previous sequence.</span>
+  <span class="n">encoder_hidden</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">initHidden</span><span class="p">()</span>
+  <span class="n">input_tensor_step</span> <span class="o">=</span> <span class="n">input_tensor</span><span class="p">[:,</span> <span class="n">step_idx</span><span class="p">][</span><span class="n">input_tensor</span><span class="p">[:,</span> <span class="n">step_idx</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
+  <span class="n">input_length</span> <span class="o">=</span> <span class="n">input_tensor_step</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="results">
 <h2>Results<a class="headerlink" href="#results" title="Permalink to this headline">¶</a></h2>
