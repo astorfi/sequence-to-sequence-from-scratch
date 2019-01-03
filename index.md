@@ -134,8 +134,6 @@ follows the forward pass!!
 
 The encoder, will generally be initialized as below:
 
-{% highlight python %}
-
     def __init__(self, hidden_size, input_size, batch_size, num_layers=1, bidirectional=False):
       """
       * For nn.LSTM, same input_size & hidden_size is chosen.
@@ -156,7 +154,7 @@ The encoder, will generally be initialized as below:
 
       # The LSTM layer for the input
       self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
-{% highlight python %}
+
 
 **NOTE:** We `do NOT` generate the whole LSTM/Bi-LSTM architecture using
 Pytorch. Instead, we just use the LSTM cells to represent **what exactly
@@ -167,7 +165,6 @@ LSTM \[[Understanding LSTM
 Netwroks](http://colah.github.io/posts/2015-08-Understanding-LSTMs/)\].
 Both cell state and hidden states must be initialized as belows:
 
-{% highlight python %}
 
     def initHidden(self):
      if self.bidirectional:
@@ -179,7 +176,7 @@ Both cell state and hidden states must be initialized as belows:
          encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
                            torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
          return encoder_state
-{% highlight python %}
+
 
 As it can be seen in the above code, for the *Bidirectional LSTM*, we
 have **separate and independent** states for `forwards` and `backward`
@@ -215,7 +212,6 @@ have been proposed \[lamb2016professor\]\_.
 
 The decoder, will generally be initialized as below:
 
-{% highlight python %}
 
       def __init__(self, hidden_size, output_size, batch_size, num_layers=1):
        super(DecoderRNN, self).__init__()
@@ -240,7 +236,6 @@ The decoder, will generally be initialized as below:
        return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
                torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
             
-{% highlight python %}
 
 #### Encoder-Decoder Bridge
 
@@ -258,7 +253,6 @@ mismatch is True in the following conditions:
 
 The linear layer will be defined as below:
 
-{% highlight python %}
 
       def __init__(self, bidirectional, hidden_size_encoder, hidden_size_decoder):
         super(Linear, self).__init__()
@@ -273,7 +267,7 @@ The linear layer will be defined as below:
            return input
         else:
            return self.linear_connection_op(input)
-{% highlight python %}
+
 
 ### Dataset
 
@@ -286,7 +280,6 @@ At the first state we have to define `word indexing` for further
 processing. The `word2index` is the dictionary of transforming word to
 its associated index and `index2word` does the reverse:
 
-{% highlight python %}
 
      SOS_token = 1
      EOS_token = 2
@@ -310,7 +303,6 @@ its associated index and `index2word` does the reverse:
          else:
              self.word2count[word] += 1
           
-{% highlight python %}
 
 Unlike the \[[Pytorch
 tutorial](https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/)\]
@@ -318,8 +310,6 @@ we started the indexing from `1` by `SOS_token = 1` to have the
 `zero reserved`!
 
 In the end, we define a dataset class to handle the processing:
-
-{% highlight python %}
 
     def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None, auto_encoder=False):
         """
@@ -358,7 +348,7 @@ In the end, we define a dataset class to handle the processing:
         self.data = selected_pairs_tensors
         self.input_lang = input_lang
         self.output_lang = output_lang
-{% highlight python %}
+
 
 ### Training/Evaluation
 
@@ -388,7 +378,6 @@ processed sequence.
 
 Some sample results for autoencoder training are as follows:
 
-{% highlight python %}
 
     Input:  you re very generous  EOS
     Output:  you re very generous  EOS
@@ -410,7 +399,6 @@ Some sample results for autoencoder training are as follows:
     Output:  i m glad i invited you  EOS
     Predicted Output:  i m glad i invited you  <EOS>
     
-{% highlight python %}
 
 Recommended Readings
 --------------------
