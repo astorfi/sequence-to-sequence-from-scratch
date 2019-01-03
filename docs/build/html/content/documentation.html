@@ -29,7 +29,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Recommended Readings" href="recommendedreading.html" />
-    <link rel="prev" title="Welcome to Deep Learning NLP documentation!" href="../index.html" /> 
+    <link rel="prev" title="Welcome to Neural Machine Translation from Scratch!" href="../index.html" /> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -101,6 +101,12 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="recommendedreading.html">Recommended Readings</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Document Credentials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../credentials/CONTRIBUTING.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../credentials/CODE_OF_CONDUCT.html">Contributor Covenant Code of Conduct</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../credentials/LICENSE.html">LICENSE</a></li>
 </ul>
 
             
@@ -176,7 +182,7 @@
 <h3>What is the problem?<a class="headerlink" href="#what-is-the-problem" title="Permalink to this headline">¶</a></h3>
 <p>Machine Translation(MT) is one of the areas of NLP that has been profoundly affected by advances in deep learning.
 In fact, progress in MT can be categorized into pre-deep learning and deep learning era. Confirmation of this could
-be some of the reference books in NLP community such as ”Speech and Language Processing” [jurafsky2000speech]. Second version of
+be some of the reference books in NLP community such as ”Speech and Language Processing”. Second version of
 this book was published in 2008 and chapter 25 is dedicated to machine translation but there is not a single mention of
 deep learning usage for MT. However, today we know that the top performing machine translation systems are solely
 based on neural networks which led to the term Neural Machine Translation (NMT).</p>
@@ -184,8 +190,7 @@ based on neural networks which led to the term Neural Machine Translation (NMT).
 niques for the task of machine translation. It was after success of neural network in image classification tasks
 that researchers started to use neural networks in machine translation. Around 2013 research groups started to achieve
 breakthrough results in NMT and boosted state of the art performance. Unlike traditional statistical machine transla-
-tion, NMT is based on an end-to-end neural network that increases the performance of machine translation systems
-[bahdanau2014neural].</p>
+tion, NMT is based on an end-to-end neural network that increases the performance of machine translation systems.</p>
 <p>We dedicate this project to a core deep learning based model for sequence-to-sequence modeling and in particular machine translation: An Encoder-Decoder architecture
 based on Long-Short Term Memory (LSTM) networks.</p>
 </div>
@@ -234,7 +239,7 @@ sequence in the output. In case of having an autoencoder, both input and output 
 are the same.</p>
 <p>A learned representation for context elements is called <code class="docutils literal notranslate"><span class="pre">word</span> <span class="pre">embedding</span></code> in which the words with similar meaning, ideally,
 become highly correlated in the representation space as well. One of the main incentives behind word embedding representations
-is the high generalization power as opposed to sparse higher dimensional representation [goldberg2017neural]. Unlike the traditional
+is the high generalization power as opposed to sparse higher dimensional representation. Unlike the traditional
 bag-of-word representation in which different words have quite different representation regardless of their usage,
 in learning the distributed representation, the usage of words in the context is of great importance which lead to
 similar representation for correlated words in meaning. The are different approaches for creating word embedding. Please
@@ -332,7 +337,7 @@ be used as the initial hidden state of the decoder. Decoding is as follows:</p>
 <p>After the first decoder step, for the following steps, the input is going to be the previous word prediction of the RNN.
 So the output generation will be upon the network sequence prediction. In case of using <code class="docutils literal notranslate"><span class="pre">teacher_forcing</span></code>, the input is going to be the actual
 targeted output word. It provides better guidance for the training but it is inconsistent with the evaluation stage as
-targeted outputs do not exists! In order to handle the issue with this approach, new approaches have been proposed [lamb2016professor].</p>
+targeted outputs do not exists! In order to handle the issue with this approach, new approaches have been proposed.</p>
 <p>The decoder, will generally be initialized as below:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">output_size</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">num_layers</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
     <span class="nb">super</span><span class="p">(</span><span class="n">DecoderRNN</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
@@ -521,7 +526,7 @@ the previously processed sequence. It can be seen in the following Python script
         <a href="recommendedreading.html" class="btn btn-neutral float-right" title="Recommended Readings" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="../index.html" class="btn btn-neutral" title="Welcome to Deep Learning NLP documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="../index.html" class="btn btn-neutral" title="Welcome to Neural Machine Translation from Scratch!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

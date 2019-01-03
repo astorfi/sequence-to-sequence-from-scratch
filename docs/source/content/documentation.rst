@@ -14,7 +14,7 @@ What is the problem?
 
 Machine Translation(MT) is one of the areas of NLP that has been profoundly affected by advances in deep learning.
 In fact, progress in MT can be categorized into pre-deep learning and deep learning era. Confirmation of this could
-be some of the reference books in NLP community such as ”Speech and Language Processing” [jurafsky2000speech]_. Second version of
+be some of the reference books in NLP community such as ”Speech and Language Processing”. Second version of
 this book was published in 2008 and chapter 25 is dedicated to machine translation but there is not a single mention of
 deep learning usage for MT. However, today we know that the top performing machine translation systems are solely
 based on neural networks which led to the term Neural Machine Translation (NMT).
@@ -23,8 +23,7 @@ When we use the term neural machine translation, we are talking about applying d
 niques for the task of machine translation. It was after success of neural network in image classification tasks
 that researchers started to use neural networks in machine translation. Around 2013 research groups started to achieve
 breakthrough results in NMT and boosted state of the art performance. Unlike traditional statistical machine transla-
-tion, NMT is based on an end-to-end neural network that increases the performance of machine translation systems
-[bahdanau2014neural]_.
+tion, NMT is based on an end-to-end neural network that increases the performance of machine translation systems.
 
 We dedicate this project to a core deep learning based model for sequence-to-sequence modeling and in particular machine translation: An Encoder-Decoder architecture
 based on Long-Short Term Memory (LSTM) networks.
@@ -87,7 +86,7 @@ are the same.
 
 A learned representation for context elements is called ``word embedding`` in which the words with similar meaning, ideally,
 become highly correlated in the representation space as well. One of the main incentives behind word embedding representations
-is the high generalization power as opposed to sparse higher dimensional representation [goldberg2017neural]_. Unlike the traditional
+is the high generalization power as opposed to sparse higher dimensional representation. Unlike the traditional
 bag-of-word representation in which different words have quite different representation regardless of their usage,
 in learning the distributed representation, the usage of words in the context is of great importance which lead to
 similar representation for correlated words in meaning. The are different approaches for creating word embedding. Please
@@ -190,7 +189,7 @@ be used as the initial hidden state of the decoder. Decoding is as follows:
 After the first decoder step, for the following steps, the input is going to be the previous word prediction of the RNN.
 So the output generation will be upon the network sequence prediction. In case of using ``teacher_forcing``, the input is going to be the actual
 targeted output word. It provides better guidance for the training but it is inconsistent with the evaluation stage as
-targeted outputs do not exists! In order to handle the issue with this approach, new approaches have been proposed [lamb2016professor]_.
+targeted outputs do not exists! In order to handle the issue with this approach, new approaches have been proposed.
 
 The decoder, will generally be initialized as below:
 
@@ -359,6 +358,7 @@ the previously processed sequence. It can be seen in the following Python script
 
 .. code-block:: python
   for step_idx in range(args.batch_size):
+    
       # reset the LSTM hidden state. Must be done before you run a new sequence. Otherwise the LSTM will treat
       # the new input sequence as a continuation of the previous sequence.
       encoder_hidden = encoder.initHidden()
