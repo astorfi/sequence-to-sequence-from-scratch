@@ -76,7 +76,7 @@ html_theme_options = {
 github_url='https://github.com/astorfi/neural-machine-translation-from-scratch'
 
 html_context = {
-"display_github": True, # Add 'Edit on Github' link instead of 'View page source'
+"display_github": False, # Add 'Edit on Github' link instead of 'View page source'
 "last_updated": True,
 "commit": False,
  'github_url': 'https://github.com/astorfi/neural-machine-translation-from-scratch'
