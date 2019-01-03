@@ -135,26 +135,27 @@ follows the forward pass!!
 The encoder, will generally be initialized as below:
 
 {% highlight python %}
-def __init__(self, hidden_size, input_size, batch_size, num_layers=1, bidirectional=False):
-   """
-   * For nn.LSTM, same input_size & hidden_size is chosen.
-   :param input_size: The size of the input vocabulary
-   :param hidden_size: The hidden size of the RNN.
-   :param batch_size: The batch_size for mini-batch optimization.
-   :param num_layers: Number of RNN layers. Default: 1
-   :param bidirectional: If the encoder is a bi-directional LSTM. Default: False
-   """
-   super(EncoderRNN, self).__init__()
-   self.batch_size = batch_size
-   self.num_layers = num_layers
-   self.bidirectional = bidirectional
-   self.hidden_size = hidden_size
 
-   # The input should be transformed to a vector that can be fed to the network.
-   self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
+    def __init__(self, hidden_size, input_size, batch_size, num_layers=1, bidirectional=False):
+      """
+      * For nn.LSTM, same input_size & hidden_size is chosen.
+      :param input_size: The size of the input vocabulary
+      :param hidden_size: The hidden size of the RNN.
+      :param batch_size: The batch_size for mini-batch optimization.
+      :param num_layers: Number of RNN layers. Default: 1
+      :param bidirectional: If the encoder is a bi-directional LSTM. Default: False
+      """
+      super(EncoderRNN, self).__init__()
+      self.batch_size = batch_size
+      self.num_layers = num_layers
+      self.bidirectional = bidirectional
+      self.hidden_size = hidden_size
 
-   # The LSTM layer for the input
-   self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
+      # The input should be transformed to a vector that can be fed to the network.
+      self.embedding = nn.Embedding(input_size, embedding_dim=hidden_size)
+
+      # The LSTM layer for the input
+      self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=num_layers)
 {% highlight python %}
 
 **NOTE:** We `do NOT` generate the whole LSTM/Bi-LSTM architecture using
@@ -167,17 +168,17 @@ Netwroks](http://colah.github.io/posts/2015-08-Understanding-LSTMs/)\].
 Both cell state and hidden states must be initialized as belows:
 
 {% highlight python %}
-def initHidden(self):
 
-  if self.bidirectional:
-      encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
-                                torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
-      encoder_state = {"forward": encoder_state, "backward": encoder_state}
-      return encoder_state
-  else:
-      encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
-                        torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
-      return encoder_state
+    def initHidden(self):
+     if self.bidirectional:
+         encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+                                   torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+         encoder_state = {"forward": encoder_state, "backward": encoder_state}
+         return encoder_state
+     else:
+         encoder_state = [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+                           torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+         return encoder_state
 {% highlight python %}
 
 As it can be seen in the above code, for the *Bidirectional LSTM*, we
@@ -215,28 +216,30 @@ have been proposed \[lamb2016professor\]\_.
 The decoder, will generally be initialized as below:
 
 {% highlight python %}
-def __init__(self, hidden_size, output_size, batch_size, num_layers=1):
-    super(DecoderRNN, self).__init__()
-    self.batch_size = batch_size
-    self.num_layers = num_layers
-    self.hidden_size = hidden_size
-    self.embedding = nn.Embedding(output_size, hidden_size)
-    self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=1)
-    self.out = nn.Linear(hidden_size, output_size)
 
-def forward(self, input, hidden):
-    output = self.embedding(input).view(1, 1, -1)
-    output, (h_n, c_n) = self.lstm(output, hidden)
-    output = self.out(output[0])
-    return output, (h_n, c_n)
+      def __init__(self, hidden_size, output_size, batch_size, num_layers=1):
+       super(DecoderRNN, self).__init__()
+       self.batch_size = batch_size
+       self.num_layers = num_layers
+       self.hidden_size = hidden_size
+       self.embedding = nn.Embedding(output_size, hidden_size)
+       self.lstm = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=1)
+       self.out = nn.Linear(hidden_size, output_size)
 
-def initHidden(self):
-    """
-    The spesific type of the hidden layer for the RNN type that is used (LSTM).
-    :return: All zero hidden state.
-    """
-    return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
-            torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+      def forward(self, input, hidden):
+       output = self.embedding(input).view(1, 1, -1)
+       output, (h_n, c_n) = self.lstm(output, hidden)
+       output = self.out(output[0])
+       return output, (h_n, c_n)
+
+      def initHidden(self):
+       """
+       The spesific type of the hidden layer for the RNN type that is used (LSTM).
+       :return: All zero hidden state.
+       """
+       return [torch.zeros(self.num_layers, 1, self.hidden_size, device=device),
+               torch.zeros(self.num_layers, 1, self.hidden_size, device=device)]
+            
 {% highlight python %}
 
 #### Encoder-Decoder Bridge
@@ -256,19 +259,20 @@ mismatch is True in the following conditions:
 The linear layer will be defined as below:
 
 {% highlight python %}
-def __init__(self, bidirectional, hidden_size_encoder, hidden_size_decoder):
-    super(Linear, self).__init__()
-    self.bidirectional = bidirectional
-    num_directions = int(bidirectional) + 1
-    self.linear_connection_op = nn.Linear(num_directions * hidden_size_encoder, hidden_size_decoder)
-    self.connection_possibility_status = num_directions * hidden_size_encoder == hidden_size_decoder
 
-def forward(self, input):
+      def __init__(self, bidirectional, hidden_size_encoder, hidden_size_decoder):
+        super(Linear, self).__init__()
+        self.bidirectional = bidirectional
+        num_directions = int(bidirectional) + 1
+        self.linear_connection_op = nn.Linear(num_directions * hidden_size_encoder, hidden_size_decoder)
+        self.connection_possibility_status = num_directions * hidden_size_encoder == hidden_size_decoder
 
-    if self.connection_possibility_status:
-        return input
-    else:
-        return self.linear_connection_op(input)
+      def forward(self, input):
+
+        if self.connection_possibility_status:
+           return input
+        else:
+           return self.linear_connection_op(input)
 {% highlight python %}
 
 ### Dataset
@@ -283,29 +287,29 @@ processing. The `word2index` is the dictionary of transforming word to
 its associated index and `index2word` does the reverse:
 
 {% highlight python %}
-SOS_token = 1
-EOS_token = 2
 
-class Lang:
-  def __init__(self, name):
-      self.name = name
-      self.word2index = {}
-      self.word2count = {}
-      self.index2word = {0: "<pad>", SOS_token: "SOS", EOS_token: "EOS"}
-      self.n_words = 3  # Count SOS and EOS
+     SOS_token = 1
+     EOS_token = 2
+     def __init__(self, name):
+         self.name = name
+         self.word2index = {}
+         self.word2count = {}
+         self.index2word = {0: "<pad>", SOS_token: "SOS", EOS_token: "EOS"}
+         self.n_words = 3  # Count SOS and EOS
 
-  def addSentence(self, sentence):
-      for word in sentence.split(' '):
-          self.addWord(word)
+     def addSentence(self, sentence):
+         for word in sentence.split(' '):
+             self.addWord(word)
 
-  def addWord(self, word):
-      if word not in self.word2index:
-          self.word2index[word] = self.n_words
-          self.word2count[word] = 1
-          self.index2word[self.n_words] = word
-          self.n_words += 1
-      else:
-          self.word2count[word] += 1
+     def addWord(self, word):
+         if word not in self.word2index:
+             self.word2index[word] = self.n_words
+             self.word2count[word] = 1
+             self.index2word[self.n_words] = word
+             self.n_words += 1
+         else:
+             self.word2count[word] += 1
+          
 {% highlight python %}
 
 Unlike the \[[Pytorch
@@ -316,8 +320,6 @@ we started the indexing from `1` by `SOS_token = 1` to have the
 In the end, we define a dataset class to handle the processing:
 
 {% highlight python %}
-class Dataset():
-    """dataset object"""
 
     def __init__(self, phase, num_embeddings=None, max_input_length=None, transform=None, auto_encoder=False):
         """
