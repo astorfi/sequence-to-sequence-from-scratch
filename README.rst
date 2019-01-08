@@ -1,3 +1,9 @@
+.. image:: https://badges.frapsoft.com/os/v2/open-source.png?v=103
+    :target: https://github.com/ellerbrock/open-source-badge/
+.. image:: https://img.shields.io/twitter/follow/amirsinatorfi.svg?label=Follow&style=social
+      :target: https://twitter.com/amirsinatorfi
+      
+
 .. image:: _img/follow-twitter.gif
    :height: 100px
    :width: 200 px
@@ -5,12 +11,6 @@
    :alt: alternate text
    :align: right
    :target: https://twitter.com/amirsinatorfi
-   
-
-.. image:: https://badges.frapsoft.com/os/v2/open-source.png?v=103
-    :target: https://github.com/ellerbrock/open-source-badge/
-.. image:: https://img.shields.io/twitter/follow/amirsinatorfi.svg?label=Follow&style=social
-      :target: https://twitter.com/amirsinatorfi
 
 ##################
 Table of Contents
