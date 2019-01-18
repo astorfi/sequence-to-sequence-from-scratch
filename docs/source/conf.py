@@ -22,7 +22,7 @@ extensions = [
 ]
 templates_path = ['_templates']
 
-edit_on_github_project = 'astorfi/neural-machine-translation-from-scratch'
+edit_on_github_project = 'astorfi/sequence-to-sequence-from-scratch'
 
 edit_on_github_branch = 'master'
 
@@ -32,7 +32,7 @@ source_suffix = ['.rst', '.md']
 # }
 
 master_doc = 'index'
-project = u'neural-machine-translation-from-scratch'
+project = u'sequence-to-sequence-from-scratch'
 copyright = u'2018, Amirsina Torfi'
 author = u'Amirsina Torfi'
 version = '1.0'
@@ -45,11 +45,11 @@ pygments_style = 'sphinx'
 # }
 htmlhelp_basename = 'ReadTheDocsdoc'
 latex_documents = [
-    (master_doc, 'neural-machine-translation-from-scratch.tex', u'neural-machine-translation-from-scratch Documentation',
+    (master_doc, 'sequence-to-sequence-from-scratch.tex', u'sequence-to-sequence-from-scratch Documentation',
      u'Amirsina Torfi', 'manual'),
 ]
 man_pages = [
-    (master_doc, 'neural-machine-translation-from-scratch', u'neural-machine-translation-from-scratch Documentation',
+    (master_doc, 'sequence-to-sequence-from-scratch', u'sequence-to-sequence-from-scratch Documentation',
      [author], 1)
 ]
 exclude_patterns = [
@@ -73,13 +73,13 @@ html_theme_options = {
     'display_version': False,
 }
 
-github_url='https://github.com/astorfi/neural-machine-translation-from-scratch'
+github_url='https://github.com/astorfi/sequence-to-sequence-from-scratch'
 
 html_context = {
 "display_github": False, # Add 'Edit on Github' link instead of 'View page source'
 "last_updated": True,
 "commit": False,
- 'github_url': 'https://github.com/astorfi/neural-machine-translation-from-scratch'
+ 'github_url': 'https://github.com/astorfi/sequence-to-sequence-from-scratch'
 }
 
 
