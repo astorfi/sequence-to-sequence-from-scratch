@@ -112,7 +112,7 @@ is the high generalization power as opposed to sparse higher dimensional represe
 bag-of-word representation in which different words have quite different representation regardless of their usage,
 in learning the distributed representation, the usage of words in the context is of great importance which lead to
 similar representation for correlated words in meaning. The are different approaches for creating word embedding. Please
-refer to the great Pytorch tutorial titled [`WORD EMBEDDINGS: ENCODING LEXICAL SEMANTICS <https://pytorch.org/tutorials/beginner/nlp/word_embeddings_tutorial.html>`_]
+refer to the great Pytorch tutorial titled [`WORD EMBEDDINGS: ENCODING LEXICAL SEMANTICS <https://pytorch.org/tutorials/beginner/nlp/word_embeddings_tutorial>`_]
 for more details.
 
 ------------------------------------------------------------
@@ -276,7 +276,7 @@ The linear layer will be defined as below:
 Dataset
 ============
 
-**NOTE:** The dataset object is heavily inspired by the official Pytorch tutorial: [`TRANSLATION WITH A SEQUENCE TO SEQUENCE NETWORK AND ATTENTION <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html/>`_]
+**NOTE:** The dataset object is heavily inspired by the official Pytorch tutorial: [`TRANSLATION WITH A SEQUENCE TO SEQUENCE NETWORK AND ATTENTION <https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial>`_]
 The dataset is prepaired using the ``data_loader.py`` script.
 
 At the first state we have to define ``word indexing`` for further processing. The ``word2index`` is the dictionary of
